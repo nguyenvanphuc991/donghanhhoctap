@@ -5,6 +5,16 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+
+declare global {
+  interface Window {
+    aistudio: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
+
 import { 
   Home, 
   Calendar, 
@@ -42,7 +52,11 @@ import {
   TrendingUp,
   Map as MapIcon,
   BookOpen,
-  Target
+  Target,
+  Calculator,
+  X,
+  Send,
+  MessageSquare
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -314,10 +328,11 @@ const FocusModeOverlay = ({
 const HomeView = ({ state, actions }: { state: any, actions: any }) => {
 
 const { user, stars, schedule, homework, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay } = state;
-const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiveTab, setSelectedDay, setIsTimerActive, setFocusTime, setCurrentSessionId, startTimer, generateBackpackList, toggleBackpackItem, handleUnlock, handleSelect, setShowHomeworkPopup, generateGuestSampleData, clearGuestData } = actions;
+const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiveTab, setSelectedDay, setIsTimerActive, setFocusTime, setCurrentSessionId, startTimer, generateBackpackList, toggleBackpackItem, handleUnlock, handleSelect, setShowHomeworkPopup, generateGuestSampleData, clearGuestData, setShowCalculator } = actions;
 
   const today = new Date().getDay(); // 0 (Sun) to 6 (Sat)
   const todayIndex = today === 0 ? 6 : today - 1; // Adjust to 0-6 (Mon-Sun)
+  const tomorrowIndex = (todayIndex + 1) % 7;
 
   const todaySchedule = useMemo(() => {
     return schedule.filter((item: any) => item.day === todayIndex).sort((a: any, b: any) => {
@@ -328,9 +343,17 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     });
   }, [schedule, todayIndex]);
 
+  const tomorrowSchedule = useMemo(() => {
+    return schedule.filter((item: any) => item.day === tomorrowIndex).sort((a: any, b: any) => {
+      const sA = a.session || 'morning';
+      const sB = b.session || 'morning';
+      if (sA !== sB) return sA === 'morning' ? -1 : 1;
+      return a.period - b.period;
+    });
+  }, [schedule, tomorrowIndex]);
+
   const todayHomework = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return homework.filter((h: any) => h.createdAt?.startsWith(todayStr) && h.status !== 'completed');
+    return homework.filter((h: any) => h.status !== 'completed');
   }, [homework]);
 
   const todayStudySessions = useMemo(() => {
@@ -344,6 +367,14 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     const completed = todayItems.filter((h: any) => h.status === 'completed').length;
     return Math.round((completed / todayItems.length) * 100);
   }, [homework]);
+
+  const sortedBackpackItems = useMemo(() => {
+    return [...backpackItems].sort((a: any, b: any) => {
+      if (a.subject === "Dụng cụ chung" && b.subject !== "Dụng cụ chung") return -1;
+      if (a.subject !== "Dụng cụ chung" && b.subject === "Dụng cụ chung") return 1;
+      return 0;
+    });
+  }, [backpackItems]);
 
 return (
   <div className="space-y-8">
@@ -428,33 +459,65 @@ return (
           )}
         </Card>
 
+        <Card className="bg-indigo-50 border-indigo-100">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-2">
+              <Calendar className="text-indigo-500" /> Thời khóa biểu ngày mai
+            </h2>
+            <span className="text-sm font-medium bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full">
+              {DAYS[tomorrowIndex]}
+            </span>
+          </div>
+          {tomorrowSchedule.length > 0 ? (
+            <div className="space-y-6">
+              {['morning', 'afternoon'].map(session => {
+                const sessionItems = tomorrowSchedule.filter(i => (i.session || 'morning') === session);
+                if (sessionItems.length === 0) return null;
+                return (
+                  <div key={session}>
+                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                      {session === 'morning' ? <Sun size={12} /> : <CloudSun size={12} />}
+                      {session === 'morning' ? 'Buổi Sáng' : 'Buổi Chiều'}
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                      {sessionItems.map((item: any) => (
+                        <div key={item.id} className="bg-white p-3 rounded-2xl shadow-sm border-2 border-indigo-100 flex flex-col items-center text-center">
+                          <span className="text-xs font-bold text-gray-700">{item.subject}</span>
+                          <span className="text-[10px] text-gray-400 font-medium">Tiết {item.period}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center py-4 text-gray-500 italic">Ngày mai không có tiết học nào.</p>
+          )}
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-green-50 border-green-100">
             <h2 className="text-xl font-bold text-green-800 mb-4 flex items-center gap-2">
-              <BookText className="text-green-500" /> Bài tập hôm nay
+              <BookText className="text-green-500" /> Danh sách bài tập chưa làm
             </h2>
-            <div className="space-y-3">
-              {todayHomework.slice(0, 3).map(h => (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              {todayHomework.map(h => (
                 <div key={h.id} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-green-100">
                   <div className="w-2 h-2 rounded-full bg-green-400" />
-                  <span className="text-sm font-medium text-gray-700 flex-1 truncate">{h.content}</span>
+                  <span className="text-sm font-medium text-gray-700 flex-1">{h.content}</span>
                   <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">{h.subject}</span>
                 </div>
               ))}
               {todayHomework.length === 0 && (
-                <p className="text-center py-2 text-gray-500 text-sm">Tuyệt vời! Bạn đã hết bài tập hôm nay.</p>
-              )}
-              {todayHomework.length > 3 && (
-                <button onClick={() => setActiveTab('homework')} className="text-xs text-green-600 font-bold hover:underline w-full text-center">
-                  Xem tất cả ({todayHomework.length})
-                </button>
+                <p className="text-center py-2 text-gray-500 text-sm">Tuyệt vời! Bạn đã hết bài tập rồi.</p>
               )}
             </div>
           </Card>
 
           <Card className="bg-yellow-50 border-yellow-100">
             <h2 className="text-xl font-bold text-yellow-800 mb-4 flex items-center gap-2">
-              <Clock className="text-yellow-500" /> Lịch học tại nhà hôm nay
+              <Clock className="text-yellow-500" /> Thời gian biểu hôm nay
             </h2>
             <div className="space-y-3">
               {todayStudySessions.length > 0 ? (
@@ -486,9 +549,9 @@ return (
             </Button>
           </div>
           
-          {backpackItems.length > 0 ? (
+          {sortedBackpackItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {backpackItems.map(item => (
+              {sortedBackpackItems.map(item => (
                 <div 
                   key={item.id} 
                   onClick={() => toggleBackpackItem(item.id)}
@@ -542,7 +605,7 @@ return (
           </button>
           <button onClick={() => setActiveTab('schedule')} className="flex flex-col items-center gap-2 p-4 bg-blue-100 rounded-2xl hover:bg-blue-200 transition-colors">
             <Calendar className="text-blue-600" />
-            <span className="text-xs font-bold text-blue-800">Lịch học</span>
+            <span className="text-xs font-bold text-blue-800">Thời khóa biểu</span>
           </button>
           <button onClick={() => setActiveTab('homework')} className="flex flex-col items-center gap-2 p-4 bg-green-100 rounded-2xl hover:bg-green-200 transition-colors">
             <BookText className="text-green-600" />
@@ -561,6 +624,51 @@ return (
             <span className="text-xs font-bold text-orange-800">Cửa hàng</span>
           </button>
         </div>
+
+        <Card className="bg-yellow-50 border-yellow-100 p-4 cursor-pointer hover:scale-105 transition-transform" onClick={() => setActiveTab('shop')}>
+          <h3 className="text-xs font-black text-yellow-800 uppercase mb-3 flex items-center gap-2">
+            <Sparkles size={14} className="text-yellow-500" /> Nhãn dán của em
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {stats.stickers && stats.stickers.length > 0 ? (
+              stats.stickers.slice(0, 6).map((s: string, i: number) => (
+                <span key={i} className="text-xl">{s}</span>
+              ))
+            ) : (
+              <span className="text-[10px] text-gray-400 italic">Chưa có nhãn dán nào</span>
+            )}
+          </div>
+        </Card>
+
+        <Card className="bg-green-50 border-green-100 p-4 cursor-pointer hover:scale-105 transition-transform" onClick={() => setActiveTab('shop')}>
+          <h3 className="text-xs font-black text-green-800 uppercase mb-3 flex items-center gap-2">
+            <BookOpen size={14} className="text-green-500" /> Dụng cụ học tập
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {SHOP_ITEMS.supplies.filter((item: any) => stats.unlockedItems.includes(item.id)).length > 0 ? (
+              SHOP_ITEMS.supplies
+                .filter((item: any) => stats.unlockedItems.includes(item.id))
+                .slice(0, 6)
+                .map((item: any) => (
+                  <span key={item.id} className="text-xl" title={item.name}>{item.icon}</span>
+                ))
+            ) : (
+              <span className="text-[10px] text-gray-400 italic">Chưa có dụng cụ nào</span>
+            )}
+          </div>
+        </Card>
+
+        <Card className="bg-blue-50 border-blue-100 p-4 cursor-pointer hover:scale-105 transition-transform" onClick={() => setShowCalculator(true)}>
+          <h3 className="text-xs font-black text-blue-800 uppercase mb-3 flex items-center gap-2">
+            <Calculator size={14} className="text-blue-500" /> Máy tính bỏ túi
+          </h3>
+          <div className="flex items-center justify-center py-2">
+            <div className="bg-white p-3 rounded-xl shadow-sm border-2 border-blue-100">
+              <Calculator size={32} className="text-blue-600" />
+            </div>
+          </div>
+          <p className="text-[10px] text-center text-blue-400 font-bold mt-2 uppercase tracking-tighter">Nhấn để sử dụng</p>
+        </Card>
 
         {!user && (
           <div className="pt-4 space-y-3">
@@ -886,6 +994,169 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   );
 };
 
+const AITutorChat = () => {
+  const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [needsKey, setNeedsKey] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setNeedsKey(!hasKey && process.env.NODE_ENV === 'production');
+      }
+    };
+    checkKey();
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsLoading(true);
+
+    try {
+      // Use the selected key (API_KEY) if available, otherwise fallback to environment key (GEMINI_API_KEY)
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const modelName = "gemini-3-flash-preview";
+
+      const history = messages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+
+      const session = ai.chats.create({
+        model: modelName,
+        config: {
+          systemInstruction: "Bạn là một Trợ lý Học tập Thông minh dành cho học sinh tiểu học. Hãy giải thích các kiến thức một cách đơn giản, dễ hiểu, vui vẻ và khích lệ. Sử dụng ngôn ngữ phù hợp với trẻ em. Nếu học sinh nhờ kiểm tra lỗi chính tả, hãy chỉ ra lỗi và giải thích tại sao. Luôn giữ thái độ tích cực và thân thiện.",
+        },
+        history: history
+      });
+
+      const response = await session.sendMessage({ message: userMsg });
+      setMessages(prev => [...prev, { role: 'model', text: response.text || 'Xin lỗi, tớ gặp chút trục trặc.' }]);
+      playSound('success');
+    } catch (error: any) {
+      console.error("AI Tutor Error:", error);
+      
+      const errorMsg = error?.message || '';
+      
+      if (errorMsg.includes('API key') || errorMsg.includes('403') || errorMsg.includes('not found') || errorMsg.includes('Requested entity was not found')) {
+        setMessages(prev => [...prev, { role: 'model', text: 'Tớ cần bạn giúp kích hoạt bằng cách chọn một "chìa khóa" (API Key) hợp lệ. Bạn nhấn nút bên dưới nhé!' }]);
+        setNeedsKey(true);
+      } else {
+        setMessages(prev => [...prev, { role: 'model', text: 'Tớ đang bận một chút, bạn hỏi lại sau nhé!' }]);
+      }
+      playSound('pop');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenKey = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      try {
+        await window.aistudio.openSelectKey();
+        setNeedsKey(false);
+        setMessages(prev => [...prev, { role: 'model', text: 'Đang khởi động lại... Bạn hãy thử gửi lại tin nhắn nhé!' }]);
+      } catch (err) {
+        console.error("Failed to open key selector:", err);
+      }
+    } else {
+      setMessages(prev => [...prev, { role: 'model', text: 'Tớ không tìm thấy bảng chọn mã khóa. Bạn hãy thử mở ứng dụng trong AI Studio hoặc kiểm tra cài đặt trình duyệt nhé!' }]);
+    }
+  };
+
+  return (
+    <Card className="bg-white border-4 border-indigo-100 p-6 shadow-lg flex flex-col h-[500px]">
+      <div className="flex items-center gap-3 mb-4 border-b-2 border-indigo-50 pb-4">
+        <div className="p-2 bg-indigo-100 rounded-xl">
+          <MessageSquare size={24} className="text-indigo-600" />
+        </div>
+        <div>
+          <h3 className="text-lg font-black text-indigo-900">Góc Trợ lý Thông minh 🤖</h3>
+          <p className="text-sm font-bold text-gray-500">Hỏi tớ về bài tập hoặc kiến thức nhé!</p>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-60">
+            <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center">
+              <Sparkles size={40} className="text-indigo-400" />
+            </div>
+            <div className="max-w-[200px]">
+              <p className="text-sm font-bold text-indigo-900">"Chào bạn! Tớ có thể giải thích bài tập, kiểm tra chính tả hoặc kể chuyện khoa học cho bạn đó!"</p>
+            </div>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] p-3 rounded-2xl text-sm font-medium ${
+              msg.role === 'user' 
+                ? 'bg-indigo-600 text-white rounded-tr-none shadow-md' 
+                : 'bg-indigo-50 text-indigo-900 rounded-tl-none border border-indigo-100 shadow-sm'
+            }`}>
+              {msg.text}
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-indigo-50 p-3 rounded-2xl rounded-tl-none border border-indigo-100">
+              <div className="flex gap-1">
+                <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+                <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+                <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+              </div>
+            </div>
+          </div>
+        )}
+        {needsKey && (
+          <div className="flex justify-center py-2">
+            <button 
+              onClick={handleOpenKey}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-xs hover:bg-amber-200 transition-colors border-2 border-amber-200"
+            >
+              <Sparkles size={14} /> Kích hoạt Trợ lý (Chọn API Key)
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          placeholder="Bạn muốn hỏi gì tớ nào?..."
+          className="flex-1 bg-gray-50 border-2 border-indigo-50 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-indigo-300 transition-all shadow-inner"
+        />
+        <button 
+          onClick={handleSend} 
+          disabled={isLoading || !input.trim()} 
+          className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-100"
+        >
+          <Send size={20} />
+        </button>
+      </div>
+    </Card>
+  );
+};
+
 const HomeworkView = ({ state, actions }: { state: any, actions: any }) => {
 
 const { user, stars, schedule, homework, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay } = state;
@@ -946,7 +1217,8 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   const getAISuggestion = async (subject: Subject) => {
     setIsGeneratingSuggestion(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Gợi ý một bài tập ngắn, thú vị cho môn ${subject} cấp tiểu học. Chỉ trả về 1 câu ngắn gọn.`,
@@ -1042,7 +1314,9 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-4 items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex flex-wrap gap-4 items-center">
         <div className="flex gap-2 bg-white p-1 rounded-2xl border-2 border-green-100 w-fit">
           {(['all', 'pending', 'completed'] as const).map(f => (
             <button
@@ -1174,8 +1448,14 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
           <p className="text-xl font-bold text-gray-400">Không có bài tập nào ở đây!</p>
         </div>
       )}
+    </div>
 
-      {isAdding && (
+    <div className="lg:col-span-1">
+      <AITutorChat />
+    </div>
+  </div>
+
+  {isAdding && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
           <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
@@ -1416,11 +1696,11 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-yellow-900">Giờ học thông minh</h2>
+          <h2 className="text-3xl font-black text-yellow-900">Thời gian biểu thông minh</h2>
           <p className="text-gray-500 font-bold">Tập trung cao độ, gặt hái thành công!</p>
         </div>
         <Button onClick={() => setIsAdding(true)} variant="accent">
-          <Plus size={20} /> Thêm lịch học
+          <Plus size={20} /> Thêm thời gian biểu
         </Button>
       </div>
 
@@ -1570,7 +1850,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-white border-gray-100">
             <h3 className="text-xl font-bold text-gray-700 mb-6 flex items-center justify-between">
-              Lịch học tại nhà
+              Thời gian biểu
               <button onClick={getAISuggestion} className="p-2 bg-sparkles-50 text-yellow-600 rounded-xl hover:bg-yellow-50 transition-colors">
                 <Sparkles size={18} />
               </button>
@@ -2002,13 +2282,47 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 const MiniGameView = ({ state, actions }: { state: any, actions: any }) => {
 
 const { user, stars, schedule, homework, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay } = state;
-const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiveTab, setSelectedDay, setIsTimerActive, setFocusTime, setCurrentSessionId, startTimer, generateBackpackList, toggleBackpackItem, handleUnlock, handleSelect, setShowHomeworkPopup } = actions;
+const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiveTab, setSelectedDay, setIsTimerActive, setFocusTime, setCurrentSessionId, startTimer, generateBackpackList, toggleBackpackItem, handleUnlock, handleSelect, setShowHomeworkPopup, updateHighScore } = actions;
 
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameState, setGameState] = useState<'start' | 'difficulty' | 'playing' | 'end'>('start');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
+  const [combo, setCombo] = useState(0);
+  const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [floatingPoints, setFloatingPoints] = useState<{id: number, x: number, y: number, value: string}[]>([]);
+  
+  // Confetti effect for new high score
+  useEffect(() => {
+    if (isNewHighScore && gameState === 'end') {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+    }
+  }, [isNewHighScore, gameState]);
+
+  const addFloatingPoint = (x: number, y: number, value: string) => {
+    const id = Date.now();
+    setFloatingPoints(prev => [...prev, { id, x, y, value }]);
+    setTimeout(() => {
+      setFloatingPoints(prev => prev.filter(p => p.id !== id));
+    }, 1000);
+  };
   
   // Math Game State
   const [mathQuestion, setMathQuestion] = useState({ a: 0, b: 0, op: '+', ans: 0 });
@@ -2079,7 +2393,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 
   const generateJokes = () => {
     const shuffled = [...JOKES].sort(() => 0.5 - Math.random());
-    setCurrentJokes(shuffled.slice(0, 3));
+    setCurrentJokes(shuffled.slice(0, 1));
     setGameState('playing');
   };
 
@@ -2161,11 +2475,20 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 
   const startGame = (gameId: string) => {
     setSelectedGame(gameId);
-    setGameState('difficulty');
+    if (gameId === 'joke') {
+      setScore(0);
+      setTimeLeft(0); // No timer for jokes
+      setGameState('playing');
+      generateJokes();
+    } else {
+      setGameState('difficulty');
+    }
   };
 
   const startPlaying = () => {
     setScore(0);
+    setCombo(0);
+    setIsNewHighScore(false);
     const time = difficulty === 'easy' ? 45 : difficulty === 'medium' ? 30 : 20;
     setTimeLeft(time);
     setGameState('playing');
@@ -2200,19 +2523,31 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     let timer: any = null;
     if (gameState === 'playing' && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0 && gameState === 'playing') {
-      setGameState('end');
-      const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
-      if (score > 0) addStars(Math.floor((score / 5) * multiplier), `chơi game ${selectedGame} (${difficulty})`);
+    } else if (timeLeft === 0 && gameState === 'playing' && selectedGame !== 'joke') {
+      const finalizeGame = async () => {
+        setGameState('end');
+        const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
+        const totalStars = Math.floor((score / 5) * multiplier);
+        if (score > 0) {
+          addStars(totalStars, `chơi game ${selectedGame} (${difficulty})`);
+          const isNew = await updateHighScore(selectedGame!, score);
+          setIsNewHighScore(isNew);
+        }
+      };
+      finalizeGame();
     }
     return () => clearInterval(timer);
-  }, [gameState, timeLeft]);
+  }, [gameState, timeLeft, selectedGame]);
 
   const handleMathAnswer = (userAns: number) => {
     if (feedback) return;
     if (userAns === mathQuestion.ans) {
-      setScore(prev => prev + 10);
+      const bonus = Math.floor(combo / 3) * 5;
+      const points = 10 + bonus;
+      setScore(prev => prev + points);
+      setCombo(prev => prev + 1);
       setFeedback('correct');
+      addFloatingPoint(50, 40, `+${points}`);
       playSound('pop');
       setTimeout(() => {
         setFeedback(null);
@@ -2220,6 +2555,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       }, 600);
     } else {
       setScore(prev => Math.max(0, prev - 5));
+      setCombo(0);
       setFeedback('incorrect');
       playSound('delete');
       setTimeout(() => {
@@ -2232,8 +2568,12 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   const handleEmojiClick = (emoji: string) => {
     if (feedback) return;
     if (emoji === targetEmoji) {
-      setScore(prev => prev + 10);
+      const bonus = Math.floor(combo / 3) * 5;
+      const points = 10 + bonus;
+      setScore(prev => prev + points);
+      setCombo(prev => prev + 1);
       setFeedback('correct');
+      addFloatingPoint(50, 40, `+${points}`);
       playSound('pop');
       setTimeout(() => {
         setFeedback(null);
@@ -2241,6 +2581,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       }, 600);
     } else {
       setScore(prev => Math.max(0, prev - 5));
+      setCombo(0);
       setFeedback('incorrect');
       playSound('delete');
       setTimeout(() => {
@@ -2261,14 +2602,19 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     if (feedback) return;
     const currentWord = selectedLetters.map(l => l.char).join('');
     if (currentWord === scrambledWord.original) {
-      setScore(prev => prev + 20);
+      const bonus = Math.floor(combo / 2) * 10;
+      const points = 20 + bonus;
+      setScore(prev => prev + points);
+      setCombo(prev => prev + 1);
       setFeedback('correct');
+      addFloatingPoint(50, 40, `+${points}`);
       playSound('pop');
       setTimeout(() => {
         setFeedback(null);
         generateWordScramble();
       }, 800);
     } else {
+      setCombo(0);
       setFeedback('incorrect');
       playSound('delete');
       setAssistantMsg("Chưa đúng rồi, thử lại nhé!");
@@ -2293,19 +2639,24 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       const [first, second] = newFlipped;
       if (memoryCards[first].emoji === memoryCards[second].emoji) {
         playSound('pop');
+        const bonus = Math.floor(combo / 2) * 10;
+        const points = 20 + bonus;
+        setCombo(prev => prev + 1);
+        addFloatingPoint(50, 40, `+${points}`);
         setTimeout(() => {
           const matchedCards = [...memoryCards];
           matchedCards[first].isMatched = true;
           matchedCards[second].isMatched = true;
           setMemoryCards(matchedCards);
           setFlippedIndices([]);
-          setScore(prev => prev + 20);
+          setScore(prev => prev + points);
           
           if (matchedCards.every(c => c.isMatched)) {
             setTimeout(() => generateMemoryCards(), 500);
           }
         }, 500);
       } else {
+        setCombo(0);
         playSound('delete');
         setTimeout(() => {
           const resetCards = [...memoryCards];
@@ -2328,6 +2679,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       setPlacedStickers(prev => [...prev, activeSlotId]);
       if (!hasErrorInCurrentSlot) {
         setScore(prev => prev + 25);
+        addFloatingPoint(50, 40, "+25");
       }
       setFeedback('correct');
       playSound('pop');
@@ -2391,7 +2743,10 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       }
       setDinoY(dinoYRef.current);
 
-      // Obstacles
+      // Obstacles and Collision
+      let collisionDetected = false;
+      let scoreIncrement = 0;
+
       setDinoObstacles(obs => {
         const speed = difficulty === 'easy' ? 2.5 : difficulty === 'medium' ? 3.5 : 4.5;
         const moved = obs.map(o => ({ ...o, x: o.x - speed }));
@@ -2399,12 +2754,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         // Collision detection
         for (const o of moved) {
           if (o.x > 12 && o.x < 18 && dinoYRef.current < 20) {
-             setGameState('end');
-             playSound('delete');
-             const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
-             if (dinoScoreRef.current > 0) {
-               addStars(Math.floor((dinoScoreRef.current / 5) * multiplier), `chơi game Khủng long (${difficulty})`);
-             }
+             collisionDetected = true;
              return moved;
           }
         }
@@ -2412,11 +2762,24 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         const filtered = moved.filter(o => o.x > -10);
         if (filtered.length < 2 && Math.random() < 0.03 && (filtered.length === 0 || filtered[filtered.length-1].x < 60)) {
            filtered.push({ id: Date.now(), x: 100, type: ['🌵', '🌵', '🌱', '🌿'][Math.floor(Math.random() * 4)] });
-           dinoScoreRef.current += 5;
-           setScore(dinoScoreRef.current);
+           scoreIncrement = 5;
         }
         return filtered;
       });
+
+      // Handle side effects outside of the functional update
+      if (collisionDetected) {
+        setGameState('end');
+        playSound('delete');
+        const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
+        if (dinoScoreRef.current > 0) {
+          addStars(Math.floor((dinoScoreRef.current / 5) * multiplier), `chơi game Khủng long (${difficulty})`);
+        }
+        clearInterval(gameLoop);
+      } else if (scoreIncrement > 0) {
+        dinoScoreRef.current += scoreIncrement;
+        setScore(dinoScoreRef.current);
+      }
     }, 30);
 
     return () => clearInterval(gameLoop);
@@ -2433,20 +2796,28 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
             <p className="text-gray-500 font-bold">Vừa chơi vừa rèn luyện trí não để nhận thêm sao nhé!</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {games.map(game => (
-              <Card 
-                key={game.id} 
-                onClick={() => startGame(game.id)}
-                className={`cursor-pointer hover:scale-105 transition-all border-white hover:border-${game.id === 'math' ? 'pink' : game.id === 'emoji' ? 'blue' : 'green'}-200`}
-              >
-                <div className="text-6xl mb-4 text-center">{game.icon}</div>
-                <h3 className={`text-xl font-black text-center mb-2 ${game.textColor}`}>{game.name}</h3>
-                <p className="text-gray-500 text-sm text-center font-bold">{game.description}</p>
-                <div className="mt-4 flex justify-center">
-                  <div className={`px-4 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider ${game.color}`}>Chơi ngay</div>
-                </div>
-              </Card>
-            ))}
+            {games.map(game => {
+              const highScore = stats.highScores?.[game.id] || 0;
+              return (
+                <Card 
+                  key={game.id} 
+                  onClick={() => startGame(game.id)}
+                  className={`cursor-pointer hover:scale-105 transition-all border-white hover:border-${game.id === 'math' ? 'pink' : game.id === 'emoji' ? 'blue' : 'green'}-200 group relative overflow-hidden`}
+                >
+                  {highScore > 0 && (
+                    <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm z-10">
+                      <Trophy size={10} /> {highScore}
+                    </div>
+                  )}
+                  <div className="text-6xl mb-4 text-center group-hover:rotate-12 transition-transform">{game.icon}</div>
+                  <h3 className={`text-xl font-black text-center mb-2 ${game.textColor}`}>{game.name}</h3>
+                  <p className="text-gray-500 text-sm text-center font-bold">{game.description}</p>
+                  <div className="mt-4 flex justify-center">
+                    <div className={`px-4 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider ${game.color}`}>Chơi ngay</div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -2491,24 +2862,51 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         <div className="space-y-6">
           <Card className={`${currentGame.bgColor} border-${currentGame.id === 'math' ? 'pink' : currentGame.id === 'emoji' ? 'blue' : 'green'}-200 min-h-[500px] relative overflow-hidden`}>
             {/* Header Stats */}
-            <div className="flex justify-between items-center mb-8">
-              <div className="flex items-center gap-4">
-                <div className="bg-white px-4 py-2 rounded-2xl font-black text-gray-700 shadow-sm border-2 border-white flex items-center gap-2">
-                  <Trophy size={18} className={currentGame.textColor} />
-                  Điểm: {score}
+            {selectedGame !== 'joke' && (
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white px-4 py-2 rounded-2xl font-black text-gray-700 shadow-sm border-2 border-white flex items-center gap-2">
+                    <Trophy size={18} className={currentGame.textColor} />
+                    Điểm: {score}
+                  </div>
+                  {combo > 1 && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="bg-orange-500 text-white px-3 py-1 rounded-xl text-xs font-black shadow-lg"
+                    >
+                      Combo x{combo} 🔥
+                    </motion.div>
+                  )}
+                  <div className="bg-white/50 px-3 py-1 rounded-xl text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                    Mức độ: {difficulty === 'easy' ? 'Dễ' : difficulty === 'medium' ? 'Vừa' : 'Khó'}
+                  </div>
                 </div>
-                <div className="bg-white/50 px-3 py-1 rounded-xl text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                  Mức độ: {difficulty === 'easy' ? 'Dễ' : difficulty === 'medium' ? 'Vừa' : 'Khó'}
+                <div className={`px-6 py-2 rounded-2xl font-black text-white shadow-lg flex items-center gap-2 ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : currentGame.color}`}>
+                  <Timer size={18} />
+                  {timeLeft}s
                 </div>
               </div>
-              <div className={`px-6 py-2 rounded-2xl font-black text-white shadow-lg flex items-center gap-2 ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : currentGame.color}`}>
-                <Timer size={18} />
-                {timeLeft}s
-              </div>
-            </div>
+            )}
 
             {/* Game Area */}
             <div className="flex flex-col items-center justify-center py-8 relative">
+              {/* Floating Points */}
+              <AnimatePresence>
+                {floatingPoints.map(p => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, y: -100, scale: 1.5 }}
+                    exit={{ opacity: 0 }}
+                    style={{ left: `${p.x}%`, top: `${p.y}%` }}
+                    className="absolute z-50 pointer-events-none font-black text-3xl text-yellow-500 drop-shadow-md"
+                  >
+                    {p.value}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
               {/* Feedback Overlay */}
               <AnimatePresence>
                 {feedback && (
@@ -2774,30 +3172,31 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
               )}
 
               {selectedGame === 'joke' && (
-                <div className="w-full max-w-2xl space-y-6">
-                  <div className="grid grid-cols-1 gap-6">
+                <div className="w-full max-w-2xl space-y-8">
+                  <AnimatePresence mode="wait">
                     {currentJokes.map((joke, idx) => (
                       <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.2 }}
+                        key={joke.substring(0, 20)} // Use part of joke as key for transition
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
                       >
-                        <Card className="p-6 bg-white/80 backdrop-blur-sm border-2 border-teal-100 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="whitespace-pre-wrap text-gray-700 font-medium leading-relaxed">
+                        <Card className="p-10 bg-white/90 backdrop-blur-md border-4 border-teal-100 shadow-xl hover:shadow-2xl transition-all rounded-[40px]">
+                          <div className="whitespace-pre-wrap text-gray-800 text-xl font-bold leading-relaxed text-center">
                             {joke}
                           </div>
                         </Card>
                       </motion.div>
                     ))}
-                  </div>
+                  </AnimatePresence>
                   <div className="flex justify-center pt-4">
                     <Button 
                       onClick={generateJokes} 
                       variant="accent" 
-                      className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-4 rounded-2xl shadow-lg flex items-center gap-2"
+                      className="bg-teal-500 hover:bg-teal-600 text-white px-10 py-5 rounded-3xl shadow-xl flex items-center gap-3 text-lg font-black transform hover:scale-105 active:scale-95 transition-all"
                     >
-                      <Sparkles size={20} /> Đọc thêm truyện khác
+                      <Sparkles size={24} /> Đọc truyện khác
                     </Button>
                   </div>
                 </div>
@@ -2815,28 +3214,48 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       )}
 
       {gameState === 'end' && (
-        <Card className="max-w-md mx-auto p-12 text-center space-y-8">
+        <Card className="max-w-md mx-auto p-12 text-center space-y-8 relative overflow-hidden">
+          {isNewHighScore && (
+            <motion.div 
+              initial={{ y: -100 }}
+              animate={{ y: 0 }}
+              className="absolute top-0 left-0 w-full bg-yellow-400 text-yellow-900 py-2 font-black text-sm uppercase tracking-widest shadow-md z-10"
+            >
+              Kỷ lục mới! 🌟
+            </motion.div>
+          )}
+          
           <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             className="text-9xl mb-4"
           >
-            {score > 0 ? '🏆' : '😅'}
+            {isNewHighScore ? '👑' : score > 0 ? '🏆' : '😅'}
           </motion.div>
+          
           <div>
             <h3 className="text-4xl font-black text-gray-800 mb-2">
-              {score > 0 ? 'Tuyệt vời!' : 'Cố gắng lên!'}
+              {isNewHighScore ? 'Kỷ lục mới!' : score > 0 ? 'Tuyệt vời!' : 'Cố gắng lên!'}
             </h3>
             <p className="text-gray-500 font-bold">Bạn đã hoàn thành thử thách {difficulty === 'easy' ? 'Dễ' : difficulty === 'medium' ? 'Vừa' : 'Khó'}</p>
           </div>
           
-          <div className="bg-gray-50 p-8 rounded-[40px] border-4 border-gray-100">
+          <div className="bg-gray-50 p-8 rounded-[40px] border-4 border-gray-100 relative">
             <div className="text-sm text-gray-400 font-black uppercase tracking-widest mb-2">Điểm số của bạn</div>
             <div className={`text-6xl font-black ${currentGame.textColor} mb-4`}>{score}</div>
-            <div className="flex items-center justify-center gap-2 text-yellow-500 font-black text-2xl">
-              <Star fill="currentColor" size={28} />
-              + {Math.floor((score / 5) * (difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2))} sao
+            
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center gap-2 text-yellow-500 font-black text-2xl">
+                <Star fill="currentColor" size={28} />
+                + {Math.floor((score / 5) * (difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2))} sao
+              </div>
             </div>
+
+            {stats.highScores?.[selectedGame!] && !isNewHighScore && (
+              <div className="mt-4 text-xs text-gray-400 font-bold">
+                Kỷ lục của bạn: {stats.highScores[selectedGame!]}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">
@@ -3082,6 +3501,112 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 };
 
 
+const CalculatorPopup = ({ onClose }: { onClose: () => void }) => {
+  const [display, setDisplay] = useState('0');
+  const [equation, setEquation] = useState('');
+  const [shouldReset, setShouldReset] = useState(false);
+
+  const handleNumber = (num: string) => {
+    if (display === '0' || shouldReset) {
+      setDisplay(num);
+      setShouldReset(false);
+    } else {
+      setDisplay(display + num);
+    }
+    playSound('pop');
+  };
+
+  const handleOperator = (op: string) => {
+    setEquation(display + ' ' + op + ' ');
+    setShouldReset(true);
+    playSound('pop');
+  };
+
+  const calculate = () => {
+    try {
+      const fullEquation = equation + display;
+      // Using Function constructor as a safer alternative to eval for simple math
+      // In a real app, use a proper math parser
+      const result = new Function(`return ${fullEquation.replace('x', '*').replace('÷', '/')}`)();
+      setDisplay(Number.isInteger(result) ? result.toString() : result.toFixed(2).toString());
+      setEquation('');
+      setShouldReset(true);
+      playSound('success');
+    } catch (e) {
+      setDisplay('Lỗi');
+      setEquation('');
+      setShouldReset(true);
+      playSound('pop');
+    }
+  };
+
+  const clear = () => {
+    setDisplay('0');
+    setEquation('');
+    setShouldReset(false);
+    playSound('delete');
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white rounded-[40px] p-6 w-full max-w-xs shadow-2xl border-4 border-blue-200"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-black text-blue-900 flex items-center gap-2">
+            <Calculator className="text-blue-500" /> Máy tính
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={20} className="text-gray-400" />
+          </button>
+        </div>
+
+        <div className="bg-gray-900 rounded-3xl p-6 mb-6 text-right shadow-inner">
+          <div className="text-blue-400 text-xs font-bold h-4 mb-1 overflow-hidden whitespace-nowrap">
+            {equation}
+          </div>
+          <div className="text-white text-4xl font-black font-mono overflow-hidden whitespace-nowrap">
+            {display}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
+          <button onClick={clear} className="col-span-2 p-4 bg-red-100 text-red-600 rounded-2xl font-black hover:bg-red-200 transition-colors">AC</button>
+          <button onClick={() => handleOperator('/')} className="p-4 bg-orange-100 text-orange-600 rounded-2xl font-black hover:bg-orange-200 transition-colors">÷</button>
+          <button onClick={() => handleOperator('*')} className="p-4 bg-orange-100 text-orange-600 rounded-2xl font-black hover:bg-orange-200 transition-colors">×</button>
+
+          {[7, 8, 9].map(n => (
+            <button key={n} onClick={() => handleNumber(n.toString())} className="p-4 bg-blue-50 text-blue-900 rounded-2xl font-black hover:bg-blue-100 transition-colors">{n}</button>
+          ))}
+          <button onClick={() => handleOperator('-')} className="p-4 bg-orange-100 text-orange-600 rounded-2xl font-black hover:bg-orange-200 transition-colors">-</button>
+
+          {[4, 5, 6].map(n => (
+            <button key={n} onClick={() => handleNumber(n.toString())} className="p-4 bg-blue-50 text-blue-900 rounded-2xl font-black hover:bg-blue-100 transition-colors">{n}</button>
+          ))}
+          <button onClick={() => handleOperator('+')} className="p-4 bg-orange-100 text-orange-600 rounded-2xl font-black hover:bg-orange-200 transition-colors">+</button>
+
+          {[1, 2, 3].map(n => (
+            <button key={n} onClick={() => handleNumber(n.toString())} className="p-4 bg-blue-50 text-blue-900 rounded-2xl font-black hover:bg-blue-100 transition-colors">{n}</button>
+          ))}
+          <button onClick={calculate} className="row-span-2 p-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">=</button>
+
+          <button onClick={() => handleNumber('0')} className="col-span-2 p-4 bg-blue-50 text-blue-900 rounded-2xl font-black hover:bg-blue-100 transition-colors">0</button>
+          <button onClick={() => handleNumber('.')} className="p-4 bg-blue-50 text-blue-900 rounded-2xl font-black hover:bg-blue-100 transition-colors">.</button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -3103,6 +3628,7 @@ export default function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [studyJourneyProgress, setStudyJourneyProgress] = useState(0);
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [showHomeworkPopup, setShowHomeworkPopup] = useState<{ show: boolean, subject?: Subject } | null>(null);
   const [stats, setStats] = useState<UserStats>({
     stars: 0,
@@ -3316,7 +3842,7 @@ export default function App() {
             lastResetWeek: currentWeek
           });
           
-          setAssistantMsg("Chào tuần mới! Lịch học của bạn đã được làm mới rồi đấy. Cố gắng lên nhé! ✨");
+          setAssistantMsg("Chào tuần mới! Thời khóa biểu của bạn đã được làm mới rồi đấy. Cố gắng lên nhé! ✨");
           setShowAssistantMsg(true);
         } catch (err) {
           console.error('Weekly reset failed:', err);
@@ -3888,6 +4414,28 @@ export default function App() {
     }
   };
 
+  const updateHighScore = async (gameId: string, newScore: number) => {
+    const currentHighScores = stats.highScores || {};
+    const currentBest = currentHighScores[gameId] || 0;
+    
+    if (newScore > currentBest) {
+      const updatedHighScores = { ...currentHighScores, [gameId]: newScore };
+      setStats(prev => ({ ...prev, highScores: updatedHighScores }));
+      
+      if (user) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            highScores: updatedHighScores
+          });
+        } catch (err) {
+          console.error("Error saving high score:", err);
+        }
+      }
+      return true; // New high score
+    }
+    return false;
+  };
+
   // --- Views ---
 
 
@@ -3919,7 +4467,9 @@ export default function App() {
     deleteHomework,
     addStudySession,
     deleteStudySession,
-    updateStudySessionStatus
+    updateStudySessionStatus,
+    updateHighScore,
+    setShowCalculator
   };
   return (
     <div className="min-h-screen font-sans text-gray-800 pb-20 md:pb-0 md:pl-24 pt-16 md:pt-20 transition-colors duration-500" style={{ backgroundColor: activeBgColor }}>
@@ -3969,9 +4519,9 @@ export default function App() {
       <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-0 md:w-24 bg-white shadow-2xl z-40 flex md:flex-col items-center justify-around md:justify-center gap-2 p-2 md:p-4 border-t-4 md:border-t-0 md:border-r-4 border-blue-100">
         {[
           { id: 'home', icon: Home, label: 'Trang chủ', color: 'text-blue-500' },
-          { id: 'schedule', icon: Calendar, label: 'Lịch học', color: 'text-blue-500' },
+          { id: 'schedule', icon: Calendar, label: 'Thời khóa biểu', color: 'text-blue-500' },
           { id: 'homework', icon: BookText, label: 'Bài tập', color: 'text-green-500' },
-          { id: 'timetable', icon: Clock, label: 'Giờ học', color: 'text-yellow-500' },
+          { id: 'timetable', icon: Clock, label: 'Thời gian biểu', color: 'text-yellow-500' },
           { id: 'achievements', icon: Trophy, label: 'Thành tích', color: 'text-purple-500' },
           { id: 'shop', icon: ShoppingBag, label: 'Cửa hàng', color: 'text-orange-500' },
           { id: 'minigame', icon: Gamepad2, label: 'Trò chơi', color: 'text-pink-500' },
@@ -4053,7 +4603,8 @@ export default function App() {
 
       {/* Completion Popup */}
       <AnimatePresence>
-        {showCompletionPopup && (
+        {showCalculator && <CalculatorPopup onClose={() => setShowCalculator(false)} />}
+      {showCompletionPopup && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <motion.div 
               initial={{ scale: 0.5, opacity: 0 }}

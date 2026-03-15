@@ -54,4 +54,5 @@ export interface UserStats {
   activeCharacter: string;
   lastDailyRewardDate?: string;
   lastResetWeek?: string;
+  highScores?: Record<string, number>;
 }
