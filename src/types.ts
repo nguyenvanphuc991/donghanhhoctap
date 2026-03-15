@@ -1,4 +1,4 @@
-export type Subject = 'Toán' | 'Tiếng Việt' | 'Tự nhiên xã hội' | 'Mỹ thuật' | 'Âm nhạc' | 'Thể dục' | 'Tiếng Anh' | 'Tin học' | 'Đạo đức' | 'Khác';
+export type Subject = string;
 
 export interface ScheduleItem {
   id: string;
@@ -25,6 +25,8 @@ export type StudyMode = 'focus' | 'homework' | 'reading' | 'review' | 'break';
 
 export interface StudySession {
   id: string;
+  day?: number; // 0 (Mon) to 6 (Sun)
+  date?: string; // Legacy support
   startTime: string;
   endTime: string;
   activity: string;
@@ -44,9 +46,12 @@ export interface UserStats {
   stars: number;
   daysOnTime: number;
   homeworkCompleted: number;
+  totalStarsEarned: number;
   badges: string[];
   unlockedItems: string[];
   stickers?: string[];
   activeWallpaper: string;
   activeCharacter: string;
+  lastDailyRewardDate?: string;
+  lastResetWeek?: string;
 }

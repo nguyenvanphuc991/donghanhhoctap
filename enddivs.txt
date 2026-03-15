@@ -1,0 +1,263 @@
+81:  </div>
+192:      </div>
+222:            </div>
+225:            </div>
+226:          </div>
+227:        </div>
+236:        </div>
+241:        </div>
+258:        </div>
+269:                <div className="text-5xl mb-4">🛑</div>
+290:                </div>
+291:              </div>
+295:      </div>
+324:          </div>
+331:          </div>
+342:          </div>
+353:          </div>
+372:                            </div>
+375:                          </div>
+378:                    </div>
+379:                  </div>
+382:            </div>
+399:                </div>
+409:            </div>
+422:                  </div>
+427:            </div>
+429:        </div>
+444:          </div>
+466:                    </div>
+467:                    <div className="text-[10px] text-gray-400">{item.subject}</div>
+468:                  </div>
+469:                </div>
+471:            </div>
+476:            </div>
+479:      </div>
+486:            </div>
+487:          </div>
+488:          <div className="text-3xl font-black">{stars}</div>
+489:          <div className="text-sm font-bold opacity-90">Ngôi sao may mắn</div>
+492:          </div>
+520:        </div>
+521:      </div>
+522:    </div>
+617:      </div>
+637:      </div>
+670:                      </div>
+676:                            </div>
+678:                          </div>
+686:                          </div>
+687:                        </div>
+692:                        </div>
+694:                    </div>
+697:              </div>
+698:            </div>
+701:      </div>
+721:              </div>
+731:              </div>
+760:              </div>
+770:              </div>
+774:              </div>
+775:            </div>
+777:        </div>
+791:              </div>
+797:            </div>
+801:            </div>
+806:            </div>
+831:          </div>
+832:        </div>
+834:    </div>
+976:        </div>
+977:      </div>
+989:      </div>
+1017:                        </div>
+1019:                      </div>
+1023:                    </div>
+1033:                        </div>
+1041:                      </div>
+1042:                    </div>
+1059:                      </div>
+1060:                    </div>
+1064:            </div>
+1065:          </div>
+1067:      </div>
+1073:          </div>
+1075:        </div>
+1086:            </div>
+1110:                </div>
+1122:              </div>
+1147:              </div>
+1160:                  </div>
+1161:                </div>
+1169:                </div>
+1170:              </div>
+1178:                </div>
+1184:              </div>
+1185:            </div>
+1187:        </div>
+1189:    </div>
+1326:        </div>
+1330:      </div>
+1339:        </div>
+1346:        </div>
+1357:                  <div className="text-4xl">🌳</div>
+1360:                <div className="text-4xl">🌱</div>
+1362:            </div>
+1391:                </div>
+1394:                </div>
+1395:              </div>
+1396:            </div>
+1411:            </div>
+1452:              </div>
+1453:            </div>
+1463:                <div className="text-2xl font-black text-indigo-600">6h</div>
+1464:                <div className="text-[10px] font-bold text-gray-400 uppercase">Tổng giờ học</div>
+1465:              </div>
+1467:                <div className="text-2xl font-black text-indigo-600">12</div>
+1468:                <div className="text-[10px] font-bold text-gray-400 uppercase">Phiên học</div>
+1469:              </div>
+1470:            </div>
+1472:        </div>
+1507:                                  </div>
+1511:                                </div>
+1512:                              </div>
+1526:                            </div>
+1528:                            {s.subject && <div className="text-xs font-bold text-blue-500 mb-4">{s.subject}</div>}
+1529:                          </div>
+1535:                              </div>
+1540:                                </div>
+1560:                              </div>
+1588:                              </div>
+1590:                          </div>
+1594:                  </div>
+1595:                </div>
+1600:                  </div>
+1603:                </div>
+1605:            </div>
+1632:                  </div>
+1635:            </div>
+1637:        </div>
+1638:      </div>
+1650:            </div>
+1690:              </div>
+1700:              </div>
+1713:              </div>
+1726:                </div>
+1738:                </div>
+1739:              </div>
+1746:              </div>
+1747:            </div>
+1749:        </div>
+1751:    </div>
+1771:        </div>
+1772:      </div>
+1780:              <div className="text-purple-100 font-bold mb-1">Tiến trình lên cấp {currentLevel + 1}</div>
+1783:              </div>
+1784:            </div>
+1786:              <div className="text-purple-100 font-bold mb-1">Cần thêm</div>
+1787:              <div className="text-2xl font-black">{nextLevelStars - stars} sao</div>
+1788:            </div>
+1789:          </div>
+1799:          </div>
+1800:        </div>
+1808:            </div>
+1809:            <div className="text-4xl font-black text-blue-600 mb-1">{stats.daysOnTime}</div>
+1810:            <div className="text-sm font-bold text-blue-800">Ngày học đúng giờ</div>
+1817:            </div>
+1818:            <div className="text-4xl font-black text-green-600 mb-1">{homework.filter(h => h.status === 'completed').length}</div>
+1819:            <div className="text-sm font-bold text-green-800">Bài tập hoàn thành</div>
+1826:            </div>
+1827:            <div className="text-4xl font-black text-orange-600 mb-1">{stars}</div>
+1828:            <div className="text-sm font-bold text-orange-800">Tổng số sao</div>
+1831:      </div>
+1846:                    </div>
+1848:                  </div>
+1852:                </div>
+1860:                </div>
+1861:              </div>
+1862:            </div>
+1871:                    </div>
+1873:                  </div>
+1877:                </div>
+1880:                </div>
+1881:              </div>
+1882:            </div>
+1883:          </div>
+1906:                  <div className="text-5xl mb-3 drop-shadow-md relative z-10">{badge.icon}</div>
+1907:                  <div className="font-black text-purple-900 text-sm mb-1 relative z-10">{badge.name}</div>
+1908:                  <div className="text-[10px] text-purple-600 leading-tight relative z-10">{badge.description}</div>
+1912:          </div>
+1914:      </div>
+1931:          </div>
+1934:    </div>
+2073:          </div>
+2081:                <div className="text-6xl mb-4 text-center">{game.icon}</div>
+2085:                  <div className={`px-4 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider ${game.color}`}>Chơi ngay</div>
+2086:                </div>
+2089:          </div>
+2090:        </div>
+2102:                </div>
+2103:              </div>
+2107:              </div>
+2108:            </div>
+2116:                  </div>
+2121:                  </div>
+2122:                </div>
+2131:                    </div>
+2132:                  </div>
+2145:                  </div>
+2146:                </div>
+2167:                    </div>
+2190:                    </div>
+2200:                  </div>
+2201:                </div>
+2203:            </div>
+2212:        </div>
+2222:            <div className="text-8xl mb-4">🏆</div>
+2226:              <div className={`text-6xl font-black ${currentGame.textColor}`}>{score} điểm</div>
+2227:            </div>
+2232:            </div>
+2236:            </div>
+2240:    </div>
+2264:        </div>
+2268:        </div>
+2269:      </div>
+2285:      </div>
+2305:          </div>
+2339:                          <div className="text-6xl drop-shadow-lg">{item.icon}</div>
+2342:                          <div className="text-5xl drop-shadow-md">{item.icon}</div>
+2349:                          </div>
+2351:                      </div>
+2354:                        <div className="text-sm font-black text-gray-800 mb-1">{item.name}</div>
+2356:                          <div className="text-[10px] font-black text-green-500 uppercase tracking-wider">Đã sở hữu</div>
+2360:                          </div>
+2362:                      </div>
+2387:          </div>
+2410:                        <div className="text-3xl">{item.icon}</div>
+2416:            </div>
+2438:                </div>
+2440:            </div>
+2442:        </div>
+2444:    </div>
+2917:          </div>
+2919:            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Chào mừng bạn nhỏ</div>
+2930:            </div>
+2931:          </div>
+2932:        </div>
+2937:          </div>
+2951:        </div>
+3023:        </div>
+3024:      </div>
+3050:              <div className="text-7xl mb-6">🎉</div>
+3057:              </div>
+3066:              </div>
+3068:          </div>
+3082:              <div className="text-7xl mb-6">🌟</div>
+3089:              </div>
+3095:          </div>
+3104:      </div>
+3116:              <div className="text-7xl mb-6">👋</div>
+3134:                </div>
+3148:              </div>
+3150:          </div>
+3153:    </div>

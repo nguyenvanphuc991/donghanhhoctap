@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user stats and preferences",
+      "type": "object",
+      "properties": {
+        "userName": { "type": "string" },
+        "stars": { "type": "integer" },
+        "daysOnTime": { "type": "integer" },
+        "homeworkCompleted": { "type": "integer" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "unlockedItems": { "type": "array", "items": { "type": "string" } },
+        "stickers": { "type": "array", "items": { "type": "string" } },
+        "activeWallpaper": { "type": "string" },
+        "activeCharacter": { "type": "string" },
+        "lastDailyRewardDate": { "type": "string" }
+      }
+    },
+    "ScheduleItem": {
+      "title": "Schedule Item",
+      "description": "A subject in the school timetable",
+      "type": "object",
+      "properties": {
+        "day": { "type": "integer" },
+        "period": { "type": "integer" },
+        "session": { "type": "string", "enum": ["morning", "afternoon"] },
+        "subject": { "type": "string" }
+      }
+    },
+    "Homework": {
+      "title": "Homework",
+      "description": "A homework task",
+      "type": "object",
+      "properties": {
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed"] },
+        "photo": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "StudySession": {
+      "title": "Study Session",
+      "description": "A home study or break session",
+      "type": "object",
+      "properties": {
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "activity": { "type": "string" },
+        "subject": { "type": "string" },
+        "status": { "type": "string", "enum": ["upcoming", "studying", "completed"] },
+        "completedAt": { "type": "string" }
+      }
+    },
+    "BackpackItem": {
+      "title": "Backpack Item",
+      "description": "An item to prepare for school",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "prepared": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and stats"
+    },
+    "/users/{userId}/schedule/{itemId}": {
+      "schema": "ScheduleItem",
+      "description": "User's school timetable"
+    },
+    "/users/{userId}/homework/{homeworkId}": {
+      "schema": "Homework",
+      "description": "User's homework list"
+    },
+    "/users/{userId}/studySessions/{sessionId}": {
+      "schema": "StudySession",
+      "description": "User's home study schedule"
+    },
+    "/users/{userId}/backpackItems/{itemId}": {
+      "schema": "BackpackItem",
+      "description": "Items to prepare in the backpack"
+    }
+  }
+}

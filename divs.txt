@@ -1,0 +1,279 @@
+76:  <div 
+170:      <div className="absolute inset-0 pointer-events-none">
+194:      <div className="max-w-md w-full text-center space-y-8 relative z-10">
+195:        <div className="relative w-72 h-72 mx-auto flex items-center justify-center">
+219:          <div className="text-center">
+220:            <div className="text-7xl font-black font-mono tracking-tighter mb-2">
+223:            <div className="text-sm font-black text-indigo-200 uppercase tracking-widest">
+229:        <div className="space-y-4">
+238:        <div className="flex items-center justify-center gap-4 bg-white/10 p-4 rounded-3xl border border-white/20">
+243:        <div className="flex gap-4">
+268:              <div className="bg-white rounded-[40px] p-8 max-w-sm w-full text-center shadow-2xl border-4 border-indigo-200">
+269:                <div className="text-5xl mb-4">🛑</div>
+272:                <div className="flex gap-4">
+306:  <div className="space-y-8">
+316:    <div className="flex flex-col md:flex-row gap-8 items-start">
+317:      <div className="flex-1 space-y-6">
+319:          <div className="flex items-center justify-between mb-4">
+325:          <div className="w-full h-4 bg-blue-50 rounded-full overflow-hidden border-2 border-blue-100">
+332:          <div className="flex items-center justify-between mt-2">
+346:          <div className="flex items-center justify-between mb-4">
+355:            <div className="space-y-6">
+360:                  <div key={session}>
+365:                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+369:                          <div key={item.id} className="bg-white p-3 rounded-2xl shadow-sm border-2 border-blue-100 flex flex-col items-center text-center">
+370:                            <div className="p-2 rounded-xl mb-2" style={{ backgroundColor: config.bgColor }}>
+388:        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+393:            <div className="space-y-3">
+395:                <div key={h.id} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-green-100">
+396:                  <div className="w-2 h-2 rounded-full bg-green-400" />
+416:            <div className="space-y-3">
+419:                  <div key={s.id} className="flex items-center gap-3 bg-white p-3 rounded-xl border border-yellow-100">
+432:          <div className="flex items-center justify-between mb-4">
+447:            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+449:                <div 
+463:                  <div className="flex-1">
+464:                    <div className={`text-sm font-bold ${item.prepared ? 'text-green-700 line-through' : 'text-gray-700'}`}>
+467:                    <div className="text-[10px] text-gray-400">{item.subject}</div>
+473:            <div className="text-center py-6 bg-white/50 rounded-2xl border-2 border-dashed border-purple-200">
+481:      <div className="w-full md:w-64 space-y-4">
+483:          <div className="flex justify-center mb-2">
+484:            <div className="bg-white/20 p-3 rounded-full">
+488:          <div className="text-3xl font-black">{stars}</div>
+489:          <div className="text-sm font-bold opacity-90">Ngôi sao may mắn</div>
+490:          <div className="mt-4 bg-white/20 rounded-full py-2 px-4 text-xs font-bold flex items-center justify-center gap-2">
+495:        <div className="grid grid-cols-2 gap-3">
+611:    <div className="space-y-6">
+612:      <div className="flex items-center justify-between">
+619:      <div className="flex gap-2 overflow-x-auto pb-2">
+639:      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+646:            <div key={session} className="space-y-4">
+651:              <div className="space-y-3">
+655:                    <div 
+664:                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-colors ${
+672:                        <div className="flex-1 flex items-center justify-between">
+673:                          <div className="flex items-center gap-3">
+674:                            <div className="p-2 rounded-xl shadow-sm" style={{ backgroundColor: getSubjectConfig(item.subject).bgColor }}>
+679:                          <div className="flex items-center gap-1">
+689:                        <div className="flex-1 flex items-center justify-between">
+704:        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+707:            <div className="space-y-4">
+708:              <div className="grid grid-cols-2 gap-3">
+722:              <div>
+732:              <div>
+761:              <div>
+771:              <div className="flex gap-3 pt-4">
+781:        <div className="fixed inset-0 bg-indigo-900/95 flex items-center justify-center p-4 z-[100] text-white">
+782:          <div className="max-w-md w-full text-center space-y-8">
+788:              <div className="w-48 h-48 rounded-full border-8 border-indigo-400/30 flex items-center justify-center relative">
+789:                <div className="absolute inset-0 border-8 border-indigo-400 rounded-full border-t-transparent" style={{ transform: `rotate(${(focusTime / (20 * 60)) * 360}deg)` }} />
+794:            <div className="space-y-2">
+799:            <div className="text-7xl font-mono font-black tracking-tighter">
+803:            <div className="flex items-center justify-center gap-4 bg-indigo-800/50 p-4 rounded-2xl border border-indigo-700">
+966:    <div className="space-y-6">
+967:      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+969:        <div className="flex gap-2">
+979:      <div className="flex gap-2 bg-white p-1 rounded-2xl border-2 border-green-100 w-fit">
+991:      <div className="space-y-8">
+993:          <div key={date} className="space-y-4">
+997:            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+1013:                    <div className="flex items-center justify-between mb-4">
+1014:                      <div className="flex items-center gap-2">
+1015:                        <div className="p-2 rounded-xl" style={{ backgroundColor: config.bgColor }}>
+1025:                    <div className="flex-1 space-y-3">
+1031:                        <div className="relative rounded-2xl overflow-hidden border-2 border-gray-100 aspect-video">
+1036:                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl w-fit ${dueStatus.bg}`}>
+1044:                    <div className="mt-6 pt-6 border-t-2 border-gray-50 flex flex-col gap-3">
+1045:                      <div className="flex gap-2">
+1070:        <div className="text-center py-20 bg-white rounded-3xl border-4 border-dashed border-green-100">
+1071:          <div className="flex justify-center mb-4">
+1079:        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+1081:            <div className="flex items-center justify-between mb-6">
+1088:            <div className="space-y-6">
+1089:              <div>
+1091:                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+1124:              <div>
+1149:              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+1150:                <div>
+1152:                  <div className="relative">
+1162:                <div>
+1173:                <div className="relative rounded-2xl overflow-hidden border-2 border-green-100 aspect-video">
+1181:              <div className="flex gap-3 pt-4">
+1321:    <div className="space-y-8 pb-12">
+1322:      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+1323:        <div>
+1334:        <div className="flex items-center justify-between mb-4">
+1340:        <div className="w-full h-4 bg-yellow-50 rounded-full overflow-hidden border-2 border-yellow-100">
+1349:      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+1351:        <div className="lg:col-span-1 space-y-8">
+1354:            <div className="absolute top-4 right-4 opacity-20">
+1357:                  <div className="text-4xl">🌳</div>
+1360:                <div className="text-4xl">🌱</div>
+1364:            <div className="relative w-48 h-48 flex items-center justify-center mb-6">
+1388:              <div className="text-center z-10">
+1389:                <div className={`text-4xl font-black font-mono mb-1 ${getTimerColor()}`}>
+1392:                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+1398:            <div className="grid grid-cols-2 gap-2 w-full px-2">
+1413:            <div className="flex flex-col gap-2 mt-6 w-full px-2">
+1424:              <div className="flex gap-2">
+1461:            <div className="grid grid-cols-2 gap-4">
+1462:              <div className="bg-white p-4 rounded-2xl shadow-sm">
+1463:                <div className="text-2xl font-black text-indigo-600">6h</div>
+1464:                <div className="text-[10px] font-bold text-gray-400 uppercase">Tổng giờ học</div>
+1466:              <div className="bg-white p-4 rounded-2xl shadow-sm">
+1467:                <div className="text-2xl font-black text-indigo-600">12</div>
+1468:                <div className="text-[10px] font-bold text-gray-400 uppercase">Phiên học</div>
+1475:        <div className="lg:col-span-2 space-y-6">
+1483:            <div className="space-y-8">
+1485:                <div key={date} className="space-y-4">
+1489:                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+1501:                          <div>
+1502:                            <div className="flex items-start justify-between mb-3">
+1503:                              <div className="flex items-center gap-2">
+1505:                                  <div className="p-1.5 rounded-lg" style={{ backgroundColor: config.bgColor }}>
+1509:                                <div className="flex flex-col">
+1528:                            {s.subject && <div className="text-xs font-bold text-blue-500 mb-4">{s.subject}</div>}
+1531:                          <div className="mt-auto pt-4 border-t-2 border-dashed border-gray-100">
+1533:                              <div className="flex items-center justify-center gap-2 text-green-500 font-bold text-sm">
+1537:                              <div className="flex flex-col gap-2">
+1538:                                <div className="flex items-center justify-center gap-2 text-blue-600 font-black text-xs animate-pulse">
+1562:                              <div className="flex gap-2">
+1597:                <div className="text-center py-12">
+1598:                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+1613:            <div className="relative flex items-center justify-between px-4">
+1614:              <div className="absolute left-0 right-0 h-2 bg-green-200 top-1/2 -translate-y-1/2 -z-10 rounded-full" />
+1619:                  <div key={step.id} className="relative flex flex-col items-center">
+1642:        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+1644:            <div className="flex items-center justify-between mb-6">
+1651:            <div className="space-y-4">
+1662:              <div>
+1691:              <div>
+1701:              <div>
+1714:              <div className="grid grid-cols-2 gap-4">
+1715:                <div>
+1727:                <div>
+1740:              <div className="flex gap-3 pt-4">
+1766:    <div className="space-y-8">
+1767:      <div className="flex items-center justify-between">
+1769:        <div className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full font-black flex items-center gap-2">
+1776:        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+1777:        <div className="relative z-10">
+1778:          <div className="flex justify-between items-end mb-4">
+1779:            <div>
+1780:              <div className="text-purple-100 font-bold mb-1">Tiến trình lên cấp {currentLevel + 1}</div>
+1781:              <div className="text-4xl font-black flex items-center gap-2">
+1785:            <div className="text-right">
+1786:              <div className="text-purple-100 font-bold mb-1">Cần thêm</div>
+1787:              <div className="text-2xl font-black">{nextLevelStars - stars} sao</div>
+1790:          <div className="w-full h-4 bg-black/20 rounded-full overflow-hidden backdrop-blur-sm p-1">
+1797:              <div className="absolute inset-0 bg-white/20 animate-pulse" />
+1803:      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+1806:            <div className="w-16 h-16 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-4 text-blue-500">
+1809:            <div className="text-4xl font-black text-blue-600 mb-1">{stats.daysOnTime}</div>
+1810:            <div className="text-sm font-bold text-blue-800">Ngày học đúng giờ</div>
+1815:            <div className="w-16 h-16 mx-auto bg-green-100 rounded-2xl flex items-center justify-center mb-4 text-green-500">
+1818:            <div className="text-4xl font-black text-green-600 mb-1">{homework.filter(h => h.status === 'completed').length}</div>
+1819:            <div className="text-sm font-bold text-green-800">Bài tập hoàn thành</div>
+1824:            <div className="w-16 h-16 mx-auto bg-orange-100 rounded-2xl flex items-center justify-center mb-4 text-orange-500">
+1827:            <div className="text-4xl font-black text-orange-600 mb-1">{stars}</div>
+1828:            <div className="text-sm font-bold text-orange-800">Tổng số sao</div>
+1833:      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+1838:          <div className="space-y-6">
+1839:            <div className="bg-white p-5 rounded-2xl border-2 border-orange-100 shadow-sm relative overflow-hidden group">
+1840:              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-orange-100 transition-colors" />
+1841:              <div className="relative z-10">
+1842:                <div className="flex justify-between items-center mb-3">
+1843:                  <div className="flex items-center gap-3">
+1844:                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-500">
+1853:                <div className="w-full h-4 bg-orange-100 rounded-full overflow-hidden p-1">
+1864:            <div className="bg-white p-5 rounded-2xl border-2 border-blue-100 shadow-sm relative overflow-hidden group">
+1865:              <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-100 transition-colors" />
+1866:              <div className="relative z-10">
+1867:                <div className="flex justify-between items-center mb-3">
+1868:                  <div className="flex items-center gap-3">
+1869:                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-500">
+1878:                <div className="w-full h-4 bg-blue-100 rounded-full overflow-hidden p-1">
+1879:                  <div className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full w-0" />
+1890:          <div className="grid grid-cols-2 gap-4">
+1905:                  {isEarned && <div className="absolute -top-10 -right-10 w-20 h-20 bg-purple-200 rounded-full blur-2xl opacity-50" />}
+1906:                  <div className="text-5xl mb-3 drop-shadow-md relative z-10">{badge.icon}</div>
+1907:                  <div className="font-black text-purple-900 text-sm mb-1 relative z-10">{badge.name}</div>
+1908:                  <div className="text-[10px] text-purple-600 leading-tight relative z-10">{badge.description}</div>
+1921:          <div className="flex flex-wrap gap-4">
+2067:    <div className="max-w-4xl mx-auto">
+2069:        <div className="space-y-8">
+2070:          <div className="text-center">
+2074:          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+2081:                <div className="text-6xl mb-4 text-center">{game.icon}</div>
+2084:                <div className="mt-4 flex justify-center">
+2085:                  <div className={`px-4 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider ${game.color}`}>Chơi ngay</div>
+2094:        <div className="space-y-6">
+2097:            <div className="flex justify-between items-center mb-8">
+2098:              <div className="flex items-center gap-4">
+2099:                <div className="bg-white px-4 py-2 rounded-2xl font-black text-gray-700 shadow-sm border-2 border-white flex items-center gap-2">
+2104:              <div className={`px-6 py-2 rounded-2xl font-black text-white shadow-lg flex items-center gap-2 ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : currentGame.color}`}>
+2111:            <div className="flex flex-col items-center justify-center py-8">
+2113:                <div className="space-y-12 w-full max-w-md">
+2114:                  <div className="text-7xl font-black text-gray-800 text-center drop-shadow-sm">
+2117:                  <div className="grid grid-cols-2 gap-4">
+2126:                <div className="space-y-8 w-full max-w-lg">
+2127:                  <div className="text-center">
+2129:                    <div className="text-8xl bg-white w-32 h-32 mx-auto flex items-center justify-center rounded-[40px] shadow-xl border-4 border-blue-100 mb-8">
+2133:                  <div className="grid grid-cols-4 gap-3">
+2150:                <div className="space-y-8 w-full max-w-md text-center">
+2151:                  <div className="bg-white p-6 rounded-3xl shadow-xl border-4 border-green-100">
+2155:                    <div className="flex flex-wrap justify-center gap-2 mb-8 min-h-[48px]">
+2170:                    <div className="flex flex-wrap justify-center gap-2 mb-8">
+2222:            <div className="text-8xl mb-4">🏆</div>
+2224:            <div className="space-y-2">
+2226:              <div className={`text-6xl font-black ${currentGame.textColor}`}>{score} điểm</div>
+2228:            <div className="bg-white/50 px-6 py-3 rounded-2xl inline-block border-2 border-white">
+2233:            <div className="flex flex-col gap-3 pt-6">
+2259:    <div className="space-y-8 pb-12">
+2260:      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+2261:        <div>
+2265:        <div className="bg-white px-6 py-3 rounded-3xl flex items-center gap-3 border-4 border-orange-100 shadow-xl">
+2272:      <div className="flex p-1 bg-orange-100 rounded-2xl w-fit">
+2290:          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+2307:          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+2334:                      <div className="w-full aspect-square rounded-2xl flex items-center justify-center shadow-inner relative overflow-hidden bg-gray-50 group-hover:bg-white transition-colors">
+2336:                          <div className="w-full h-full" style={{ backgroundColor: item.color }} />
+2339:                          <div className="text-6xl drop-shadow-lg">{item.icon}</div>
+2342:                          <div className="text-5xl drop-shadow-md">{item.icon}</div>
+2347:                          <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
+2353:                      <div className="text-center">
+2354:                        <div className="text-sm font-black text-gray-800 mb-1">{item.name}</div>
+2356:                          <div className="text-[10px] font-black text-green-500 uppercase tracking-wider">Đã sở hữu</div>
+2358:                          <div className="text-[10px] font-black text-orange-500 uppercase tracking-wider flex items-center justify-center gap-1">
+2390:        <div className="space-y-8">
+2395:            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+2408:                        <div className="w-full h-12 rounded-lg" style={{ backgroundColor: item.color }} />
+2410:                        <div className="text-3xl">{item.icon}</div>
+2423:            <div className="bg-white p-8 rounded-[40px] border-4 border-dashed border-orange-100 min-h-[200px] flex flex-wrap gap-6 justify-center items-center">
+2435:                <div className="text-center text-gray-300">
+2911:    <div className="min-h-screen font-sans text-gray-800 pb-20 md:pb-0 md:pl-24 pt-16 md:pt-20 transition-colors duration-500" style={{ backgroundColor: activeBgColor }}>
+2914:        <div className="flex items-center gap-3">
+2915:          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-lg text-white">
+2918:          <div>
+2919:            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Chào mừng bạn nhỏ</div>
+2920:            <div className="text-sm md:text-lg font-black text-blue-900 leading-none flex items-center gap-2">
+2933:        <div className="flex items-center gap-4">
+2934:          <div className="bg-yellow-100 px-4 py-2 rounded-2xl flex items-center gap-2 border-2 border-yellow-200 shadow-sm">
+2999:      <div className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-50 pointer-events-none">
+3000:        <div className="relative flex flex-col items-end">
+3011:                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r-4 border-b-4 border-blue-200 rotate-45" />
+3043:          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+3050:              <div className="text-7xl mb-6">🎉</div>
+3054:              <div className="bg-yellow-50 p-4 rounded-3xl mb-8 flex items-center justify-center gap-3 border-2 border-yellow-100">
+3059:              <div className="flex flex-col gap-3">
+3075:          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[110]">
+3082:              <div className="text-7xl mb-6">🌟</div>
+3086:              <div className="bg-yellow-50 p-4 rounded-3xl mb-8 flex items-center justify-center gap-3 border-2 border-yellow-100">
+3100:      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-20">
+3101:        <div className="absolute top-10 left-10 w-32 h-32 bg-yellow-200 rounded-full blur-3xl" />
+3102:        <div className="absolute bottom-20 right-20 w-64 h-64 bg-blue-200 rounded-full blur-3xl" />
+3103:        <div className="absolute top-1/2 left-1/4 w-48 h-48 bg-pink-200 rounded-full blur-3xl" />
+3109:          <div className="fixed inset-0 bg-indigo-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[200]">
+3116:              <div className="text-7xl mb-6">👋</div>
+3120:              <div className="space-y-6">
+3121:                <div className="relative">

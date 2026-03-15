@@ -1,0 +1,169 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - userName: string (required)
+    //   - stars: number (required)
+    //   - daysOnTime: number (required)
+    //   - homeworkCompleted: number (required)
+    //   - badges: list (required)
+    //   - unlockedItems: list (required)
+    //   - stickers: list (optional)
+    //   - activeWallpaper: string (required)
+    //   - activeCharacter: string (required)
+    //   - lastDailyRewardDate: string (optional)
+    //
+    // Sub-Collection: users/{userId}/schedule
+    // Document ID: {itemId}
+    // Fields:
+    //   - day: number (required, 0-6)
+    //   - period: number (required, 1-5)
+    //   - session: string (required, morning/afternoon)
+    //   - subject: string (required)
+    //
+    // Sub-Collection: users/{userId}/homework
+    // Document ID: {homeworkId}
+    // Fields:
+    //   - subject: string (required)
+    //   - content: string (required)
+    //   - dueDate: string (required)
+    //   - status: string (required, pending/in-progress/completed)
+    //   - photo: string (optional)
+    //   - createdAt: string (required)
+    //
+    // Sub-Collection: users/{userId}/studySessions
+    // Document ID: {sessionId}
+    // Fields:
+    //   - startTime: string (required)
+    //   - endTime: string (required)
+    //   - activity: string (required)
+    //   - subject: string (optional)
+    //   - status: string (required, upcoming/studying/completed)
+    //   - completedAt: string (optional)
+    //
+    // Sub-Collection: users/{userId}/backpackItems
+    // Document ID: {itemId}
+    // Fields:
+    //   - name: string (required)
+    //   - subject: string (required)
+    //   - prepared: bool (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return hasRequiredFields(['userName', 'stars', 'daysOnTime', 'homeworkCompleted', 'badges', 'unlockedItems', 'activeWallpaper', 'activeCharacter']) &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() < 100 &&
+             data.stars is number &&
+             data.daysOnTime is number &&
+             data.homeworkCompleted is number &&
+             data.badges is list &&
+             data.unlockedItems is list &&
+             data.activeWallpaper is string &&
+             data.activeCharacter is string &&
+             (!('stickers' in data) || data.stickers is list || data.stickers == null) &&
+             (!('lastDailyRewardDate' in data) || data.lastDailyRewardDate is string || data.lastDailyRewardDate == null);
+    }
+
+    function isValidScheduleItem(data) {
+      return hasRequiredFields(['day', 'period', 'session', 'subject']) &&
+             data.day is number && data.day >= 0 && data.day <= 6 &&
+             data.period is number && data.period >= 1 && data.period <= 10 &&
+             data.session in ['morning', 'afternoon'] &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() < 100;
+    }
+
+    function isValidHomework(data) {
+      return hasRequiredFields(['subject', 'content', 'dueDate', 'status', 'createdAt']) &&
+             data.subject is string &&
+             data.content is string && data.content.size() < 1000 &&
+             data.dueDate is string &&
+             data.status in ['pending', 'in-progress', 'completed'] &&
+             data.createdAt is string;
+    }
+
+    function isValidStudySession(data) {
+      return hasRequiredFields(['startTime', 'endTime', 'activity', 'status']) &&
+             data.startTime is string &&
+             data.endTime is string &&
+             data.activity is string && data.activity.size() < 500 &&
+             data.status in ['upcoming', 'studying', 'completed'];
+    }
+
+    function isValidBackpackItem(data) {
+      return hasRequiredFields(['name', 'subject', 'prepared']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.subject is string &&
+             data.prepared is bool;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /schedule/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidScheduleItem(request.resource.data);
+        allow update: if isOwner(userId) && isValidScheduleItem(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /homework/{homeworkId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidHomework(request.resource.data);
+        allow update: if isOwner(userId) && isValidHomework(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /studySessions/{sessionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidStudySession(request.resource.data);
+        allow update: if isOwner(userId) && isValidStudySession(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /backpackItems/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBackpackItem(request.resource.data);
+        allow update: if isOwner(userId) && isValidBackpackItem(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
