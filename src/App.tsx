@@ -5,6 +5,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 declare global {
   interface Window {
@@ -33,6 +36,7 @@ import {
   Award,
   ShoppingBag,
   Paintbrush,
+  Palette,
   User,
   Sun,
   CloudSun,
@@ -55,13 +59,22 @@ import {
   Target,
   Calculator,
   X,
+  XCircle,
   Send,
-  MessageSquare
+  MessageSquare,
+  Tag,
+  Paperclip,
+  CalendarDays,
+  BookMarked,
+  Printer,
+  LayoutGrid,
+  List,
+  Search
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { GoogleGenAI, Type } from "@google/genai";
-import { ScheduleItem, Homework, StudySession, UserStats, Subject, BackpackItem, HomeworkStatus, StudyMode } from './types';
-import { SUBJECT_CONFIG, DAYS, BADGES, SHOP_ITEMS, STUDY_JOURNEY, WORD_LIST, STICKER_BOOK_SCENES, getSampleData } from './constants';
+import { ScheduleItem, Homework, StudySession, UserStats, Subject, BackpackItem, HomeworkStatus, StudyMode, Note, ChecklistItem } from './types';
+import { SUBJECT_CONFIG, DAYS, BADGES, SHOP_ITEMS, STUDY_JOURNEY, WORD_LIST, WORD_RESCUE_LIST, SITUATIONS, STICKER_BOOK_SCENES, getSampleData } from './constants';
 import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
@@ -75,7 +88,9 @@ import {
   query, 
   where, 
   orderBy,
-  getDocs
+  getDocs,
+  limit,
+  getCountFromServer
 } from 'firebase/firestore';
 
 // --- Helpers ---
@@ -118,7 +133,7 @@ const Button = ({
 }: { 
   children: React.ReactNode; 
   onClick?: () => void; 
-  variant?: 'primary' | 'secondary' | 'accent' | 'danger';
+  variant?: 'primary' | 'secondary' | 'accent' | 'danger' | 'outline';
   className?: string;
   disabled?: boolean;
   key?: string | number;
@@ -128,6 +143,7 @@ const Button = ({
     secondary: 'bg-green-500 hover:bg-green-600 text-white shadow-[0_4px_0_rgb(21,128,61)] active:shadow-none active:translate-y-1',
     accent: 'bg-yellow-400 hover:bg-yellow-500 text-blue-900 shadow-[0_4px_0_rgb(202,138,4)] active:shadow-none active:translate-y-1',
     danger: 'bg-red-500 hover:bg-red-600 text-white shadow-[0_4px_0_rgb(185,28,28)] active:shadow-none active:translate-y-1',
+    outline: 'bg-transparent border-2 border-gray-200 text-gray-700 hover:bg-gray-50 active:translate-y-1'
   };
 
   return (
@@ -322,6 +338,845 @@ const FocusModeOverlay = ({
         </AnimatePresence>
       </div>
     </motion.div>
+  );
+};
+
+const SortableNote = ({ note, colorConfig, updateNote, handleEdit, deleteNote }: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className={`break-inside-avoid p-5 rounded-2xl border-2 shadow-sm relative group transition-all ${colorConfig.class} ${note.isCompleted ? 'opacity-60 grayscale-[0.5]' : ''}`}
+    >
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="absolute top-3 left-3 cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-black/5 text-black/30 hover:text-black/50 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <LayoutGrid size={16} />
+      </div>
+
+      <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button 
+          onClick={() => updateNote(note.id, { isPinned: !note.isPinned })}
+          className={`p-1.5 rounded-lg transition-colors ${note.isPinned ? 'bg-black/10 text-black' : 'hover:bg-black/5 text-black/50 hover:text-black'}`}
+        >
+          <Star size={16} className={note.isPinned ? 'fill-current' : ''} />
+        </button>
+        <button 
+          onClick={() => handleEdit(note)}
+          className="p-1.5 rounded-lg hover:bg-black/5 text-black/50 hover:text-black transition-colors"
+        >
+          <Edit2 size={16} />
+        </button>
+        <button 
+          onClick={() => deleteNote(note.id)}
+          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      {note.isPinned && (
+        <div className="absolute -top-3 -left-3 bg-yellow-400 text-yellow-900 p-1.5 rounded-full shadow-md border-2 border-white">
+          <Star size={14} className="fill-current" />
+        </div>
+      )}
+
+      <div 
+        className="cursor-pointer mt-4"
+        onClick={() => updateNote(note.id, { isCompleted: !note.isCompleted })}
+      >
+        {note.title && (
+          <h3 className={`font-bold text-lg mb-2 pr-20 flex items-center gap-2 ${note.isCompleted ? 'line-through' : ''}`}>
+            {note.icon && <span>{note.icon}</span>}
+            {note.title}
+          </h3>
+        )}
+        {note.content && (
+          <p className={`whitespace-pre-wrap text-sm leading-relaxed ${note.isCompleted ? 'line-through' : ''} ${!note.title ? 'pr-20' : ''}`}>
+            {!note.title && note.icon && <span className="mr-2">{note.icon}</span>}
+            {note.content}
+          </p>
+        )}
+      </div>
+
+      {note.checklist && note.checklist.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {note.checklist.map((item: any) => (
+            <div 
+              key={item.id} 
+              className="flex items-start gap-2 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                const newChecklist = note.checklist!.map((c: any) => c.id === item.id ? { ...c, isCompleted: !c.isCompleted } : c);
+                updateNote(note.id, { checklist: newChecklist });
+              }}
+            >
+              <div className={`mt-0.5 min-w-[16px] h-4 rounded border flex items-center justify-center ${item.isCompleted ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-400'}`}>
+                {item.isCompleted && <Check size={12} />}
+              </div>
+              <span className={`text-sm ${item.isCompleted ? 'line-through opacity-60' : ''}`}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {note.files && note.files.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {note.files.map((file: any, idx: number) => (
+            <div key={idx} className="flex items-center gap-1 bg-black/5 px-2 py-1 rounded-lg text-xs font-medium">
+              {file.type.startsWith('image/') ? <ImageIcon size={12} /> : <Paperclip size={12} />}
+              <span className="truncate max-w-[100px]">{file.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {note.tags && note.tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {note.tags.map((tag: any, idx: number) => (
+            <span key={idx} className="bg-black/10 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+      
+      <div className="mt-4 flex flex-col gap-2 text-xs font-medium opacity-60">
+        <div className="flex items-center justify-between">
+          <span>{new Date(note.createdAt).toLocaleDateString('vi-VN')}</span>
+          {note.isCompleted && <span className="flex items-center gap-1"><Check size={14} /> Đã xong</span>}
+        </div>
+        {note.reminderDate && (
+          <div className="flex items-center gap-1 text-red-600 bg-red-100/50 w-fit px-2 py-1 rounded-md">
+            <Bell size={12} /> Nhắc nhở: {new Date(note.reminderDate).toLocaleString('vi-VN')}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+const NotesView = ({ state, actions }: { state: any, actions: any }) => {
+  const { notes } = state;
+  const { addNote, updateNote, deleteNote } = actions;
+
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [color, setColor] = useState('bg-yellow-100');
+  const [isPinned, setIsPinned] = useState(false);
+  const [reminderDate, setReminderDate] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [files, setFiles] = useState<{ name: string; url: string; type: string }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'today' | 'tomorrow' | 'reminder' | 'pinned' | 'completed'>('all');
+  const [quickNoteText, setQuickNoteText] = useState('');
+  
+  const [icon, setIcon] = useState<string>('');
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [newChecklistItem, setNewChecklistItem] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+  const [reminderRepeat, setReminderRepeat] = useState<'none' | 'daily' | 'weekly'>('none');
+  const [reminderDays, setReminderDays] = useState<number[]>([]);
+
+  const NOTE_ICONS = [
+    { icon: '📚', label: 'Học tập' },
+    { icon: '🎯', label: 'Mục tiêu' },
+    { icon: '🎮', label: 'Sở thích' },
+    { icon: '🛒', label: 'Mua sắm' },
+    { icon: '💡', label: 'Ý tưởng' },
+    { icon: '😊', label: 'Cảm xúc' },
+  ];
+
+  const colors = [
+    { id: 'bg-yellow-100', class: 'bg-yellow-100 border-yellow-200 text-yellow-900' },
+    { id: 'bg-blue-100', class: 'bg-blue-100 border-blue-200 text-blue-900' },
+    { id: 'bg-green-100', class: 'bg-green-100 border-green-200 text-green-900' },
+    { id: 'bg-pink-100', class: 'bg-pink-100 border-pink-200 text-pink-900' },
+    { id: 'bg-purple-100', class: 'bg-purple-100 border-purple-200 text-purple-900' },
+  ];
+
+  const PREDEFINED_TAGS = [
+    'Học tập', 'Việc cần làm', 'Nhắc nhở', 'Ghi nhớ', 'Lưu ý', 
+    'Mục tiêu', 'Kế hoạch', 'Ý tưởng', 'Sở thích', 'Mua sắm', 
+    'Cảm xúc', 'Thành tích'
+  ];
+
+  const totalNotes = notes.length;
+  const completedNotes = notes.filter((n: Note) => n.isCompleted).length;
+  const pinnedNotes = notes.filter((n: Note) => n.isPinned).length;
+  const reminderNotes = notes.filter((n: Note) => n.reminderDate).length;
+  
+  const tagCounts = notes.reduce((acc: any, note: Note) => {
+    if (note.tags) {
+      note.tags.forEach(tag => {
+        acc[tag] = (acc[tag] || 0) + 1;
+      });
+    }
+    return acc;
+  }, {});
+
+  const handleSave = () => {
+    if (!title.trim() && !content.trim() && checklist.length === 0) return;
+
+    const noteData = {
+      title,
+      content,
+      color,
+      icon,
+      isPinned,
+      reminderDate: reminderDate || null,
+      reminderTime: reminderTime || null,
+      reminderRepeat,
+      reminderDays,
+      tags,
+      files,
+      checklist
+    };
+
+    if (editingNote) {
+      updateNote(editingNote.id, noteData);
+    } else {
+      addNote({
+        ...noteData,
+        isCompleted: false,
+        createdAt: Date.now()
+      });
+    }
+
+    resetForm();
+  };
+
+  const handleQuickNote = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && quickNoteText.trim()) {
+      e.preventDefault();
+      addNote({
+        title: '',
+        content: quickNoteText.trim(),
+        color: 'bg-yellow-100',
+        isPinned: false,
+        isCompleted: false,
+        createdAt: Date.now()
+      });
+      setQuickNoteText('');
+    }
+  };
+
+  const resetForm = () => {
+    setIsAdding(false);
+    setEditingNote(null);
+    setTitle('');
+    setContent('');
+    setColor('bg-yellow-100');
+    setIcon('');
+    setIsPinned(false);
+    setReminderDate('');
+    setReminderTime('');
+    setReminderRepeat('none');
+    setReminderDays([]);
+    setTags([]);
+    setTagInput('');
+    setFiles([]);
+    setChecklist([]);
+    setNewChecklistItem('');
+  };
+
+  const handleEdit = (note: Note) => {
+    setEditingNote(note);
+    setTitle(note.title || '');
+    setContent(note.content || '');
+    setColor(note.color || 'bg-yellow-100');
+    setIcon(note.icon || '');
+    setIsPinned(note.isPinned || false);
+    setReminderDate(note.reminderDate || '');
+    setReminderTime(note.reminderTime || '');
+    setReminderRepeat(note.reminderRepeat || 'none');
+    setReminderDays(note.reminderDays || []);
+    setTags(note.tags || []);
+    setFiles(note.files || []);
+    setChecklist(note.checklist || []);
+    setIsAdding(true);
+  };
+
+  const handleAddChecklist = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && newChecklistItem.trim()) {
+      e.preventDefault();
+      setChecklist([...checklist, { id: Date.now().toString(), text: newChecklistItem.trim(), isCompleted: false }]);
+      setNewChecklistItem('');
+    }
+  };
+
+  const toggleChecklistItem = (id: string) => {
+    setChecklist(checklist.map(item => item.id === id ? { ...item, isCompleted: !item.isCompleted } : item));
+  };
+
+  const removeChecklistItem = (id: string) => {
+    setChecklist(checklist.filter(item => item.id !== id));
+  };
+
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) {
+        setTags([...tags, tagInput.trim()]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList) return;
+
+    Array.from(fileList).forEach((file: File) => {
+      if (file.size > 500000) { // Limit to 500KB to avoid Firestore 1MB limit easily
+        alert(`File ${file.name} quá lớn. Vui lòng chọn file dưới 500KB.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFiles(prev => [...prev, {
+            name: file.name,
+            url: event.target!.result as string,
+            type: file.type
+          }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+  };
+
+  const sortedNotes = [...notes]
+    .filter((note: Note) => {
+      if (selectedTag && (!note.tags || !note.tags.includes(selectedTag))) return false;
+      
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchTitle = note.title?.toLowerCase().includes(query);
+        const matchContent = note.content?.toLowerCase().includes(query);
+        const matchChecklist = note.checklist?.some(item => item.text.toLowerCase().includes(query));
+        if (!matchTitle && !matchContent && !matchChecklist) return false;
+      }
+
+      if (filterType === 'today') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        return note.reminderDate === todayStr;
+      }
+      if (filterType === 'tomorrow') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        return note.reminderDate === tomorrowStr;
+      }
+      if (filterType === 'reminder') return !!note.reminderDate || !!note.reminderTime;
+      if (filterType === 'pinned') return note.isPinned;
+      if (filterType === 'completed') return note.isCompleted;
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      
+      // Sort by order if available, otherwise fallback to createdAt
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      return b.createdAt - a.createdAt;
+    });
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = sortedNotes.findIndex((note: Note) => note.id === active.id);
+      const newIndex = sortedNotes.findIndex((note: Note) => note.id === over.id);
+
+      const newSortedNotes = arrayMove(sortedNotes, oldIndex, newIndex);
+      
+      // Update order in backend
+      newSortedNotes.forEach((note: Note, index: number) => {
+        updateNote(note.id, { order: index });
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-black text-gray-800 flex items-center gap-3">
+          <Edit2 className="text-blue-500" size={32} />
+          Ghi chú cá nhân
+        </h2>
+        <Button onClick={() => setIsAdding(true)} className="bg-blue-500 hover:bg-blue-600">
+          <Plus size={20} /> Thêm ghi chú
+        </Button>
+      </div>
+
+      <div className="bg-white p-4 rounded-2xl border-2 border-blue-100 shadow-sm flex items-center gap-3">
+        <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+          <Edit2 size={20} />
+        </div>
+        <input
+          type="text"
+          placeholder="Ghi chú nhanh (Ví dụ: mua bút mới) - Nhấn Enter để lưu"
+          value={quickNoteText}
+          onChange={(e) => setQuickNoteText(e.target.value)}
+          onKeyDown={handleQuickNote}
+          className="flex-1 bg-transparent border-none outline-none font-medium text-gray-700 placeholder-gray-400"
+        />
+        {quickNoteText && (
+          <button onClick={() => handleQuickNote({ key: 'Enter', preventDefault: () => {} } as any)} className="bg-blue-500 text-white p-2 rounded-xl hover:bg-blue-600 transition-colors">
+            <Send size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 bg-white p-2 rounded-2xl border-2 border-gray-100 shadow-sm flex items-center gap-2">
+          <div className="pl-3 text-gray-400">
+            <Search size={20} />
+          </div>
+          <input
+            type="text"
+            placeholder="Tìm kiếm ghi chú, checklist..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent border-none outline-none font-medium text-gray-700 placeholder-gray-400 py-2"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="pr-3 text-gray-400 hover:text-gray-600">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+          <div className="flex bg-gray-100 p-1 rounded-xl whitespace-nowrap">
+            {[
+              { id: 'all', label: 'Tất cả' },
+              { id: 'today', label: 'Hôm nay' },
+              { id: 'tomorrow', label: 'Ngày mai' },
+              { id: 'reminder', label: 'Có nhắc nhở' },
+              { id: 'pinned', label: 'Đã ghim' },
+              { id: 'completed', label: 'Đã xong' }
+            ].map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setFilterType(filter.id as any)}
+                className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${filterType === filter.id ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+            <BookMarked size={20} />
+          </div>
+          <h4 className="font-bold text-blue-900 text-lg">Tổng hợp ghi chú</h4>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+            <div className="text-gray-500 text-xs font-medium mb-1">Tổng số</div>
+            <div className="text-2xl font-black text-gray-800">{totalNotes}</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+            <div className="text-gray-500 text-xs font-medium mb-1">Đã hoàn thành</div>
+            <div className="text-2xl font-black text-green-600">{completedNotes}</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+            <div className="text-gray-500 text-xs font-medium mb-1">Đã ghim</div>
+            <div className="text-2xl font-black text-yellow-600">{pinnedNotes}</div>
+          </div>
+          <div className="bg-white p-3 rounded-xl border border-blue-100/50 shadow-sm">
+            <div className="text-gray-500 text-xs font-medium mb-1">Có nhắc nhở</div>
+            <div className="text-2xl font-black text-red-500">{reminderNotes}</div>
+          </div>
+        </div>
+
+        {Object.keys(tagCounts).length > 0 && (
+          <div>
+            <div className="text-sm font-semibold text-blue-800 mb-2 flex items-center justify-between">
+              <span>Phân loại theo thẻ:</span>
+              {selectedTag && (
+                <button 
+                  onClick={() => setSelectedTag(null)}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Bỏ lọc
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedTag(null)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all ${
+                  selectedTag === null 
+                    ? 'bg-blue-600 text-white border border-blue-600' 
+                    : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-50'
+                }`}
+              >
+                <span>Tất cả</span>
+                <span className={`${selectedTag === null ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800'} px-1.5 py-0.5 rounded-md text-[10px]`}>
+                  {totalNotes}
+                </span>
+              </button>
+              {Object.entries(tagCounts).sort((a: any, b: any) => b[1] - a[1]).map(([tag, count]) => (
+                <button 
+                  key={tag} 
+                  onClick={() => setSelectedTag(tag)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 shadow-sm transition-all ${
+                    selectedTag === tag 
+                      ? 'bg-blue-600 text-white border border-blue-600' 
+                      : 'bg-white border border-blue-200 text-blue-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <span>{tag}</span>
+                  <span className={`${selectedTag === tag ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800'} px-1.5 py-0.5 rounded-md text-[10px]`}>
+                    {count as number}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {notes.length === 0 ? (
+        <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+          <Edit2 size={48} className="mx-auto text-gray-300 mb-4" />
+          <p className="text-xl font-bold text-gray-400">Chưa có ghi chú nào!</p>
+          <p className="text-gray-500 mt-2">Hãy tạo ghi chú đầu tiên của bạn nhé.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-gray-500 font-medium italic flex items-center gap-2 px-2">
+            <AlertCircle size={16} className="text-blue-500" />
+            Nhấn vào từng ghi chú để kết thúc. Kéo thả để sắp xếp lại vị trí.
+          </p>
+          <DndContext 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext 
+              items={sortedNotes.map((n: Note) => n.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                <AnimatePresence>
+            {sortedNotes.map((note: Note) => {
+              const colorConfig = colors.find(c => c.id === note.color) || colors[0];
+                    return (
+                      <SortableNote 
+                        key={note.id} 
+                        note={note} 
+                        colorConfig={colorConfig} 
+                        updateNote={updateNote} 
+                        handleEdit={handleEdit} 
+                        deleteNote={deleteNote} 
+                      />
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+    )}
+
+      {isAdding && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }} 
+            animate={{ scale: 1, opacity: 1 }} 
+            className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editingNote ? 'Sửa ghi chú' : 'Thêm ghi chú mới'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsAdding(false);
+                  setEditingNote(null);
+                  setTitle('');
+                  setContent('');
+                  setColor('bg-yellow-100');
+                  setIsPinned(false);
+                }} 
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div className="flex gap-2">
+                <div className="relative">
+                  <select
+                    value={icon}
+                    onChange={(e) => setIcon(e.target.value)}
+                    className="appearance-none w-12 h-[50px] text-center rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-xl bg-white cursor-pointer"
+                  >
+                    <option value="">📝</option>
+                    {NOTE_ICONS.map(i => (
+                      <option key={i.label} value={i.icon}>{i.icon}</option>
+                    ))}
+                  </select>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Tiêu đề (không bắt buộc)"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none font-bold text-lg transition-all"
+                />
+              </div>
+              
+              <textarea
+                placeholder="Nội dung ghi chú..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full p-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none min-h-[100px] resize-y transition-all"
+              />
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-2">Checklist</label>
+                <div className="space-y-2 mb-2">
+                  {checklist.map(item => (
+                    <div key={item.id} className="flex items-center gap-2">
+                      <button 
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className={`w-5 h-5 rounded border flex items-center justify-center ${item.isCompleted ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}
+                      >
+                        {item.isCompleted && <Check size={14} />}
+                      </button>
+                      <input 
+                        type="text" 
+                        value={item.text}
+                        onChange={(e) => setChecklist(checklist.map(c => c.id === item.id ? { ...c, text: e.target.value } : c))}
+                        className={`flex-1 p-1.5 text-sm border-b border-transparent hover:border-gray-200 focus:border-blue-500 outline-none ${item.isCompleted ? 'line-through text-gray-400' : ''}`}
+                      />
+                      <button onClick={() => removeChecklistItem(item.id)} className="text-gray-400 hover:text-red-500 p-1">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Plus size={18} className="text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Thêm mục checklist (nhấn Enter)..."
+                    value={newChecklistItem}
+                    onChange={(e) => setNewChecklistItem(e.target.value)}
+                    onKeyDown={handleAddChecklist}
+                    className="flex-1 p-2 text-sm rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-600 mb-2">Màu sắc</label>
+                <div className="flex gap-3">
+                  {colors.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setColor(c.id)}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${c.class} ${color === c.id ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'border-transparent hover:scale-110'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Bell size={18} className="text-gray-400" />
+                    <input
+                      type="date"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                      className="flex-1 p-2 text-sm rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => setReminderTime(e.target.value)}
+                      className="w-32 p-2 text-sm rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pl-6">
+                    <select
+                      value={reminderRepeat}
+                      onChange={(e) => setReminderRepeat(e.target.value as any)}
+                      className="p-2 text-sm rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                    >
+                      <option value="none">Không lặp lại</option>
+                      <option value="daily">Mỗi ngày</option>
+                      <option value="weekly">Hàng tuần</option>
+                    </select>
+                    {reminderRepeat === 'weekly' && (
+                      <div className="flex gap-1">
+                        {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (reminderDays.includes(i)) {
+                                setReminderDays(reminderDays.filter(day => day !== i));
+                              } else {
+                                setReminderDays([...reminderDays, i]);
+                              }
+                            }}
+                            className={`w-8 h-8 rounded-full text-xs font-bold ${reminderDays.includes(i) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Tag size={18} className="text-gray-400 mt-2" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {PREDEFINED_TAGS.map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            if (tags.includes(tag)) {
+                              removeTag(tag);
+                            } else {
+                              setTags([...tags, tag]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${tags.includes(tag) ? 'bg-blue-500 text-white border-blue-500' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="Thêm thẻ khác (nhấn Enter)..."
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={handleAddTag}
+                        className="flex-1 p-2 text-sm rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                      />
+                    </div>
+                    
+                    {tags.filter(t => !PREDEFINED_TAGS.includes(t)).length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {tags.filter(t => !PREDEFINED_TAGS.includes(t)).map((tag, idx) => (
+                          <span key={idx} className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium border border-blue-100">
+                            #{tag}
+                            <button onClick={() => removeTag(tag)} className="hover:text-blue-900"><X size={12} /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Paperclip size={18} className="text-gray-400 mt-2" />
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {files.length > 0 && (
+                      <div className="flex flex-col gap-2">
+                        {files.map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg text-sm border border-gray-100">
+                            <div className="flex items-center gap-2 truncate">
+                              {file.type.startsWith('image/') ? <ImageIcon size={14} className="text-gray-400" /> : <Paperclip size={14} className="text-gray-400" />}
+                              <span className="truncate max-w-[200px]">{file.name}</span>
+                            </div>
+                            <button onClick={() => removeFile(idx)} className="text-gray-400 hover:text-red-500"><X size={14} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => setIsPinned(!isPinned)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-sm transition-colors ${isPinned ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Star size={16} className={isPinned ? 'fill-current' : ''} />
+                  {isPinned ? 'Đã ghim lên đầu' : 'Ghim lên đầu'}
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={() => {
+                    setIsAdding(false);
+                    setEditingNote(null);
+                    setTitle('');
+                    setContent('');
+                    setColor('bg-yellow-100');
+                    setIsPinned(false);
+                  }} 
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  Hủy
+                </Button>
+                <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                  Lưu ghi chú
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -611,6 +1466,10 @@ return (
             <BookText className="text-green-600" />
             <span className="text-xs font-bold text-green-800">Bài tập</span>
           </button>
+          <button onClick={() => setActiveTab('notes')} className="flex flex-col items-center gap-2 p-4 bg-yellow-100 rounded-2xl hover:bg-yellow-200 transition-colors">
+            <Edit2 className="text-yellow-600" />
+            <span className="text-xs font-bold text-yellow-800">Ghi chú</span>
+          </button>
           <button onClick={() => setActiveTab('achievements')} className="flex flex-col items-center gap-2 p-4 bg-purple-100 rounded-2xl hover:bg-purple-200 transition-colors">
             <Trophy className="text-purple-600" />
             <span className="text-xs font-bold text-purple-800">Thành tích</span>
@@ -619,7 +1478,7 @@ return (
             <Gamepad2 className="text-pink-600" />
             <span className="text-xs font-bold text-pink-800">Trò chơi</span>
           </button>
-          <button onClick={() => setActiveTab('shop')} className="flex flex-col items-center gap-2 p-4 bg-orange-100 rounded-2xl hover:bg-orange-200 transition-colors">
+          <button onClick={() => setActiveTab('shop')} className="flex flex-col items-center gap-2 p-4 bg-orange-100 rounded-2xl hover:bg-orange-200 transition-colors col-span-2">
             <ShoppingBag className="text-orange-600" />
             <span className="text-xs font-bold text-orange-800">Cửa hàng</span>
           </button>
@@ -693,6 +1552,44 @@ return (
   );
 };
 
+const DraggableSubject: React.FC<{ subject: string, config: any }> = ({ subject, config }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `subject-${subject}`,
+    data: { subject }
+  });
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: 50,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`flex flex-col items-center gap-1 p-2 rounded-xl cursor-grab active:cursor-grabbing transition-transform bg-white border border-gray-100 shadow-sm ${isDragging ? 'opacity-50' : 'hover:scale-105'}`}
+    >
+      <div className="p-2 rounded-xl" style={{ backgroundColor: config.bgColor }}>
+        {React.createElement(config.icon, { size: 20, color: config.color })}
+      </div>
+      <span className="text-[10px] font-bold text-center max-w-[60px] truncate">{subject}</span>
+    </div>
+  );
+};
+
+const DroppableSlot: React.FC<{ id: string, children: React.ReactNode, isWeekend: boolean, className?: string }> = ({ id, children, isWeekend, className }) => {
+  const { isOver, setNodeRef } = useDroppable({ id });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className || ''} ${isOver ? 'ring-2 ring-blue-500 bg-blue-50/50 scale-[1.02] transition-transform' : ''}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 const ScheduleView = ({ state, actions }: { state: any, actions: any }) => {
 
@@ -707,6 +1604,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   const [newDay, setNewDay] = useState(0);
   const [newSession, setNewSession] = useState<'morning' | 'afternoon'>('morning');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
   const handleAdd = async () => {
     const subjectToSave = isCustomSubject ? customSubject : newSubject;
@@ -766,98 +1664,259 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     await deleteScheduleItem(id);
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const subject = active.data.current?.subject;
+    if (!subject) return;
+
+    const [_, dayStr, session, periodStr] = (over.id as string).split('-');
+    const day = parseInt(dayStr);
+    const period = parseInt(periodStr);
+
+    const existingItem = schedule.find((i: ScheduleItem) => i.day === day && i.period === period && (i.session || 'morning') === session);
+
+    if (existingItem) {
+      await updateScheduleItem(existingItem.id, { subject });
+    } else {
+      await addScheduleItem({
+        day,
+        period,
+        session: session as 'morning' | 'afternoon',
+        subject
+      });
+    }
+  };
+
+  const subjectStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    schedule.forEach((item: ScheduleItem) => {
+      stats[item.subject] = (stats[item.subject] || 0) + 1;
+    });
+    return Object.entries(stats).sort((a, b) => b[1] - a[1]);
+  }, [schedule]);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-black text-blue-900">Thời khóa biểu</h2>
-        <Button onClick={() => openAddForSlot(1, 'morning')} variant="primary">
-          <Plus size={20} /> Thêm tiết học
-        </Button>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {DAYS.map((day, idx) => {
-          const isWeekend = idx >= 5;
-          const isActive = selectedDay === idx;
-          return (
-            <button
-              key={day}
-              onClick={() => setSelectedDay(idx)}
-              className={`px-6 py-2 rounded-full font-bold transition-all whitespace-nowrap border-2 ${
-                isActive 
-                  ? isWeekend ? 'bg-orange-500 text-white border-orange-500 shadow-lg' : 'bg-blue-500 text-white border-blue-500 shadow-lg'
-                  : isWeekend ? 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100' : 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50'
-              }`}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {['morning', 'afternoon'].map(session => {
-          const isWeekend = selectedDay >= 5;
-          const sessionColorClass = isWeekend ? 'text-orange-600' : 'text-blue-800';
-          const iconColorClass = session === 'morning' ? 'text-yellow-500' : (isWeekend ? 'text-orange-400' : 'text-blue-400');
-          
-          return (
-            <div key={session} className="space-y-4">
-              <h3 className={`text-xl font-bold ${sessionColorClass} flex items-center gap-2`}>
-                {session === 'morning' ? <Sun className={iconColorClass} /> : <CloudSun className={iconColorClass} />}
-                {session === 'morning' ? 'Buổi Sáng' : 'Buổi Chiều'}
-              </h3>
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map(p => {
-                  const item = schedule.find(i => i.day === selectedDay && i.period === p && (i.session || 'morning') === session);
-                  return (
-                    <div 
-                      key={p} 
-                      onClick={() => item ? handleEdit(item) : openAddForSlot(p, session as 'morning' | 'afternoon')}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer group shadow-sm ${
-                        item 
-                          ? isWeekend ? 'bg-orange-50 border-orange-200 hover:shadow-md' : 'bg-white border-blue-100 hover:border-blue-300 hover:shadow-md'
-                          : 'border-dashed border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-colors ${
-                        item 
-                          ? isWeekend ? 'bg-orange-200 text-orange-700' : 'bg-blue-100 text-blue-600'
-                          : 'bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500'
-                      }`}>
-                        {p}
-                      </div>
-                      {item ? (
-                        <div className="flex-1 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl shadow-sm" style={{ backgroundColor: getSubjectConfig(item.subject).bgColor }}>
-                              {React.createElement(getSubjectConfig(item.subject).icon, { size: 20, color: getSubjectConfig(item.subject).color })}
-                            </div>
-                            <span className="text-base font-bold text-gray-700">{item.subject}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button onClick={(e) => { e.stopPropagation(); handleEdit(item); }} className={`${isWeekend ? 'text-orange-400 hover:text-orange-600' : 'text-blue-400 hover:text-blue-600'} p-2`}>
-                              <Edit2 size={18} />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="text-red-400 hover:text-red-600 p-2">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex-1 flex items-center justify-between">
-                          <span className="text-gray-300 italic text-sm">Trống</span>
-                          <Plus size={16} className="text-gray-300 group-hover:text-blue-400" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+    <DndContext onDragEnd={handleDragEnd}>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between print:hidden">
+          <h2 className="text-3xl font-black text-blue-900">Thời khóa biểu</h2>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-gray-100 p-1 rounded-xl">
+              <button
+                onClick={() => setViewMode('day')}
+                className={`p-2 rounded-lg flex items-center gap-2 transition-all ${viewMode === 'day' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <List size={18} />
+                <span className="hidden sm:inline">Theo ngày</span>
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`p-2 rounded-lg flex items-center gap-2 transition-all ${viewMode === 'week' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <LayoutGrid size={18} />
+                <span className="hidden sm:inline">Theo tuần</span>
+              </button>
             </div>
-          );
-        })}
-      </div>
+            {viewMode === 'week' && (
+              <Button onClick={handlePrint} variant="secondary" className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200">
+                <Printer size={20} />
+              </Button>
+            )}
+            <Button onClick={() => openAddForSlot(1, 'morning')} variant="primary">
+              <Plus size={20} /> Thêm tiết học
+            </Button>
+          </div>
+        </div>
+
+        <div className="print:hidden bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+          <p className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+            <Sparkles size={16} /> Kéo thả môn học vào thời khóa biểu
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(SUBJECT_CONFIG).filter(([key]) => key !== 'Khác').map(([subject, config]) => (
+              <DraggableSubject key={subject} subject={subject} config={config} />
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden print:block mb-6">
+          <h1 className="text-3xl font-black text-center mb-2">THỜI KHÓA BIỂU</h1>
+          <p className="text-center text-gray-500">Năm học 2025 - 2026</p>
+        </div>
+
+      {viewMode === 'day' ? (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-2 print:hidden">
+            {DAYS.map((day, idx) => {
+              const isWeekend = idx >= 5;
+              const isActive = selectedDay === idx;
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(idx)}
+                  className={`px-6 py-2 rounded-full font-bold transition-all whitespace-nowrap border-2 ${
+                    isActive 
+                      ? isWeekend ? 'bg-orange-500 text-white border-orange-500 shadow-lg' : 'bg-blue-500 text-white border-blue-500 shadow-lg'
+                      : isWeekend ? 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100' : 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50'
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {['morning', 'afternoon'].map(session => {
+              const isWeekend = selectedDay >= 5;
+              const sessionColorClass = isWeekend ? 'text-orange-600' : 'text-blue-800';
+              const iconColorClass = session === 'morning' ? 'text-yellow-500' : (isWeekend ? 'text-orange-400' : 'text-blue-400');
+              
+              return (
+                <div key={session} className="space-y-4">
+                  <h3 className={`text-xl font-bold ${sessionColorClass} flex items-center gap-2`}>
+                    {session === 'morning' ? <Sun className={iconColorClass} /> : <CloudSun className={iconColorClass} />}
+                    {session === 'morning' ? 'Buổi Sáng' : 'Buổi Chiều'}
+                  </h3>
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map(p => {
+                      const item = schedule.find((i: ScheduleItem) => i.day === selectedDay && i.period === p && (i.session || 'morning') === session);
+                      return (
+                        <DroppableSlot key={p} id={`slot-${selectedDay}-${session}-${p}`} isWeekend={isWeekend}>
+                          <div 
+                            onClick={() => item ? handleEdit(item) : openAddForSlot(p, session as 'morning' | 'afternoon')}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer group shadow-sm ${
+                              item 
+                                ? isWeekend ? 'bg-orange-50 border-orange-200 hover:shadow-md' : 'bg-white border-blue-100 hover:border-blue-300 hover:shadow-md'
+                                : 'border-dashed border-gray-100 hover:border-blue-200 hover:bg-blue-50/30'
+                            }`}
+                          >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-black transition-colors ${
+                              item 
+                                ? isWeekend ? 'bg-orange-200 text-orange-700' : 'bg-blue-100 text-blue-600'
+                                : 'bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500'
+                            }`}>
+                              {p}
+                            </div>
+                            {item ? (
+                              <div className="flex-1 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 rounded-xl shadow-sm" style={{ backgroundColor: getSubjectConfig(item.subject).bgColor }}>
+                                    {React.createElement(getSubjectConfig(item.subject).icon, { size: 20, color: getSubjectConfig(item.subject).color })}
+                                  </div>
+                                  <span className="text-base font-bold text-gray-700">{item.subject}</span>
+                                </div>
+                                <div className="flex items-center gap-1 print:hidden">
+                                  <button onClick={(e) => { e.stopPropagation(); handleEdit(item); }} className={`${isWeekend ? 'text-orange-400 hover:text-orange-600' : 'text-blue-400 hover:text-blue-600'} p-2`}>
+                                    <Edit2 size={18} />
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="text-red-400 hover:text-red-600 p-2">
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex items-center justify-between">
+                                <span className="text-gray-300 italic text-sm">Trống</span>
+                                <Plus size={16} className="text-gray-300 group-hover:text-blue-400 print:hidden" />
+                              </div>
+                            )}
+                          </div>
+                        </DroppableSlot>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="space-y-6">
+          <div className="overflow-x-auto rounded-2xl border border-blue-100 shadow-sm">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-blue-900 uppercase bg-blue-50">
+                <tr>
+                  <th className="px-4 py-3 border-b border-blue-100 text-center w-20">Buổi</th>
+                  <th className="px-4 py-3 border-b border-blue-100 text-center w-16">Tiết</th>
+                  {DAYS.map(day => (
+                    <th key={day} className="px-4 py-3 border-b border-blue-100 text-center min-w-[120px]">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {['morning', 'afternoon'].map((session, sIdx) => (
+                  <React.Fragment key={session}>
+                    {[1, 2, 3, 4, 5].map((period, pIdx) => (
+                      <tr key={`${session}-${period}`} className="bg-white border-b border-gray-50 hover:bg-gray-50">
+                        {pIdx === 0 && (
+                          <td rowSpan={5} className="px-4 py-3 font-bold text-center border-r border-gray-100 bg-gray-50/50">
+                            {session === 'morning' ? <span className="text-yellow-600 flex flex-col items-center gap-1"><Sun size={16}/> Sáng</span> : <span className="text-orange-600 flex flex-col items-center gap-1"><CloudSun size={16}/> Chiều</span>}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-center font-bold text-gray-500 border-r border-gray-100">{period}</td>
+                        {DAYS.map((_, dayIdx) => {
+                          const item = schedule.find((i: ScheduleItem) => i.day === dayIdx && i.period === period && (i.session || 'morning') === session);
+                          return (
+                            <td 
+                              key={dayIdx} 
+                              className="border-r border-gray-100 last:border-r-0 cursor-pointer hover:bg-blue-50/50 transition-colors p-0"
+                              onClick={() => item ? handleEdit(item) : openAddForSlot(period, session as 'morning' | 'afternoon')}
+                            >
+                              <DroppableSlot id={`slot-${dayIdx}-${session}-${period}`} isWeekend={dayIdx >= 5} className="w-full h-full min-h-[48px] p-2 flex items-center justify-center">
+                                {item ? (
+                                  <div className="flex flex-col items-center justify-center p-2 rounded-xl w-full" style={{ backgroundColor: getSubjectConfig(item.subject).bgColor }}>
+                                    <span className="font-bold text-center text-xs" style={{ color: getSubjectConfig(item.subject).color }}>{item.subject}</span>
+                                  </div>
+                                ) : (
+                                  <div className="h-full w-full flex items-center justify-center text-gray-200">
+                                    -
+                                  </div>
+                                )}
+                              </DroppableSlot>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {sIdx === 0 && (
+                      <tr className="bg-blue-50/30 h-4">
+                        <td colSpan={9}></td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Card className="bg-blue-50 border-blue-100 print:break-inside-avoid">
+            <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="text-blue-500" /> Thống kê môn học trong tuần
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {subjectStats.map(([subject, count]) => (
+                <div key={subject} className="bg-white px-4 py-2 rounded-xl border border-blue-100 shadow-sm flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg" style={{ backgroundColor: getSubjectConfig(subject).bgColor }}>
+                    {React.createElement(getSubjectConfig(subject).icon, { size: 16, color: getSubjectConfig(subject).color })}
+                  </div>
+                  <span className="font-bold text-gray-700">{subject}:</span>
+                  <span className="font-black text-blue-600">{count} tiết</span>
+                </div>
+              ))}
+              {subjectStats.length === 0 && (
+                <div className="text-gray-500 italic">Chưa có dữ liệu thời khóa biểu</div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {isAdding && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -991,6 +2050,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         </div>
       )}
     </div>
+    </DndContext>
   );
 };
 
@@ -1278,37 +2338,37 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-3xl font-black text-green-900">Bài tập về nhà</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Bài tập về nhà</h2>
         <div className="flex gap-2">
-          <Button onClick={() => setIsFocusMode(true)} variant="accent" className="bg-indigo-500 text-white shadow-[0_4px_0_rgb(67,56,202)]">
-            <Timer size={20} /> Chế độ tập trung
+          <Button onClick={() => setIsFocusMode(true)} variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+            <Timer size={18} className="mr-2" /> Tập trung
           </Button>
-          <Button onClick={() => setIsAdding(true)} variant="secondary">
-            <Plus size={20} /> Thêm bài tập
+          <Button onClick={() => setIsAdding(true)} className="bg-green-600 hover:bg-green-700 text-white">
+            <Plus size={18} className="mr-2" /> Thêm bài tập
           </Button>
         </div>
       </div>
 
       {/* Daily Progress Bar */}
       {todayTotal > 0 && (
-        <Card className="bg-white border-4 border-green-100 p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
+        <Card className="bg-white border border-gray-200 p-5 shadow-sm rounded-2xl">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-xl">
-                <Trophy size={24} className="text-green-600" />
+              <div className="p-2 bg-green-50 rounded-lg">
+                <Trophy size={20} className="text-green-600" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-green-900">Tiến độ hôm nay</h3>
-                <p className="text-sm font-bold text-gray-500">Bạn đã hoàn thành {todayCompleted}/{todayTotal} bài tập!</p>
+                <h3 className="text-base font-bold text-gray-800">Tiến độ hôm nay</h3>
+                <p className="text-sm text-gray-500">Hoàn thành {todayCompleted}/{todayTotal} bài tập</p>
               </div>
             </div>
-            <span className="text-2xl font-black text-green-600">{todayProgress}%</span>
+            <span className="text-xl font-bold text-green-600">{todayProgress}%</span>
           </div>
-          <div className="h-4 bg-gray-100 rounded-full overflow-hidden border-2 border-gray-50">
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${todayProgress}%` }}
-              className="h-full bg-gradient-to-r from-green-400 to-green-600"
+              className="h-full bg-green-500"
             />
           </div>
         </Card>
@@ -1317,157 +2377,230 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex gap-2 bg-white p-1 rounded-2xl border-2 border-green-100 w-fit">
-          {(['all', 'pending', 'completed'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${filter === f ? 'bg-green-500 text-white shadow-md' : 'text-green-600 hover:bg-green-50'}`}
-            >
-              {f === 'all' ? 'Tất cả' : f === 'pending' ? 'Chưa làm' : 'Hoàn thành'}
-            </button>
-          ))}
-        </div>
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+              {(['all', 'pending', 'completed'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === f ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  {f === 'all' ? 'Tất cả' : f === 'pending' ? 'Chưa làm' : 'Hoàn thành'}
+                </button>
+              ))}
+            </div>
 
-        <div className="flex gap-2 items-center overflow-x-auto pb-2 no-scrollbar max-w-full">
-          <button
-            onClick={() => setSubjectFilter('all')}
-            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all border-2 ${subjectFilter === 'all' ? 'bg-blue-500 border-blue-500 text-white shadow-md' : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200'}`}
-          >
-            Tất cả môn
-          </button>
-          {availableSubjects.map(subject => (
-            <button
-              key={subject}
-              onClick={() => setSubjectFilter(subject)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all border-2 ${subjectFilter === subject ? 'bg-blue-500 border-blue-500 text-white shadow-md' : 'bg-white border-gray-100 text-gray-500 hover:border-blue-200'}`}
-            >
-              {subject}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-8">
-        {sortedDates.map(date => (
-          <div key={date} className="space-y-4">
-            <h4 className="text-lg font-black text-green-800 uppercase tracking-widest border-b-2 border-green-100 pb-2">
-              {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groupedHomework[date].map(h => {
-                const config = getSubjectConfig(h.subject);
-                const dueStatus = getDueDateStatus(h.dueDate, h.status);
-                return (
-                  <motion.div 
-                    layout
-                    key={h.id} 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className={`group relative flex flex-col p-6 rounded-3xl border-4 transition-all ${h.status === 'completed' ? 'bg-gray-50 border-gray-200 opacity-75' : 'shadow-xl hover:shadow-2xl'}`}
-                    style={{ 
-                      borderColor: h.status === 'completed' ? '#E5E7EB' : config.color,
-                      backgroundColor: h.status === 'completed' ? '#F9FAFB' : config.bgColor 
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl" style={{ backgroundColor: config.bgColor }}>
-                          <config.icon size={20} color={config.color} />
-                        </div>
-                        <span className="text-sm font-black" style={{ color: config.color }}>{h.subject}</span>
-                      </div>
-                      <button onClick={() => handleDelete(h.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-
-                    <div className="flex-1 space-y-3">
-                      <p className={`text-2xl font-bold leading-tight ${h.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                        {h.content}
-                      </p>
-
-                      {h.photo && (
-                        <div className="relative rounded-2xl overflow-hidden border-2 border-gray-100 aspect-video">
-                          <img src={h.photo} alt="Bài tập" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        </div>
-                      )}
-
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl w-fit ${dueStatus.bg}`}>
-                        <Clock size={16} className={dueStatus.color} />
-                        <span className={`text-sm font-black uppercase tracking-wider ${dueStatus.color}`}>
-                          {dueStatus.label}: {new Date(h.dueDate).toLocaleDateString('vi-VN')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t-2 border-gray-50 flex flex-col gap-3">
-                      {h.status !== 'completed' && (
-                        <button 
-                          onClick={() => {
-                            playSound('start');
-                            setTimerMode('homework');
-                            setFocusTime(30 * 60);
-                            setIsFocusMode(true);
-                            setAssistantMsg(`Bắt đầu làm bài ${h.subject} thôi nào!`);
-                          }}
-                          className="w-full py-3 bg-indigo-500 text-white rounded-2xl font-black shadow-[0_4px_0_rgb(67,56,202)] hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"
-                        >
-                          <Play size={18} fill="currentColor" /> Bắt đầu làm ngay
-                        </button>
-                      )}
-                      <div className="flex gap-2">
-                        {(['pending', 'in-progress', 'completed'] as const).map(s => (
-                          <button
-                            key={s}
-                            onClick={() => updateStatus(h.id, s)}
-                            className={`flex-1 py-2 rounded-xl text-sm font-black transition-all border-2 ${
-                              h.status === s 
-                                ? s === 'completed' ? 'bg-green-500 border-green-500 text-white' : s === 'in-progress' ? 'bg-blue-500 border-blue-500 text-white' : 'bg-gray-500 border-gray-500 text-white'
-                                : 'border-gray-100 text-gray-400 hover:border-gray-200'
-                            }`}
-                          >
-                            {s === 'pending' ? '⏳ Chờ' : s === 'in-progress' ? '📝 Làm' : '✅ Xong'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <div className="flex gap-2 items-center overflow-x-auto pb-2 no-scrollbar max-w-full">
+              <button
+                onClick={() => setSubjectFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${subjectFilter === 'all' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                Tất cả môn
+              </button>
+              {availableSubjects.map(subject => (
+                <button
+                  key={subject}
+                  onClick={() => setSubjectFilter(subject)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${subjectFilter === subject ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  {subject}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
 
-      {filteredHomework.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-3xl border-4 border-dashed border-green-100">
-          <div className="flex justify-center mb-4">
-            <BookText size={64} className="text-green-100" />
+          <div className="space-y-6">
+            {sortedDates.map(date => (
+              <div key={date} className="space-y-3">
+                <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">
+                  {new Date(date).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </h4>
+                <div className="flex flex-col gap-3">
+                  {groupedHomework[date].map(h => {
+                    const config = getSubjectConfig(h.subject);
+                    const dueStatus = getDueDateStatus(h.dueDate, h.status);
+                    return (
+                      <motion.div 
+                        layout
+                        key={h.id} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`group relative flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border transition-all ${h.status === 'completed' ? 'bg-gray-50 border-gray-200 opacity-75' : 'bg-white border-gray-200 shadow-sm hover:shadow-md'}`}
+                      >
+                        <div className="flex flex-col items-center justify-center gap-2 sm:w-24 shrink-0">
+                          <div className="p-3 rounded-xl" style={{ backgroundColor: config.bgColor, color: config.color }}>
+                            <config.icon size={24} />
+                          </div>
+                          <span className="text-xs font-bold text-center" style={{ color: config.color }}>{h.subject}</span>
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-center min-w-0">
+                          <p className={`text-lg font-semibold ${h.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                            {h.content}
+                          </p>
+                          
+                          <div className="flex flex-wrap items-center gap-3 mt-2">
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${dueStatus.bg} ${dueStatus.color}`}>
+                              <Clock size={14} />
+                              <span>{dueStatus.label}: {new Date(h.dueDate).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                            
+                            <div className="flex gap-1">
+                              {(['pending', 'in-progress', 'completed'] as const).map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => updateStatus(h.id, s)}
+                                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all border ${
+                                    h.status === s 
+                                      ? s === 'completed' ? 'bg-green-100 border-green-200 text-green-700' : s === 'in-progress' ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-gray-100 border-gray-200 text-gray-700'
+                                      : 'border-transparent text-gray-500 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {s === 'pending' ? 'Chờ' : s === 'in-progress' ? 'Đang làm' : 'Xong'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center justify-between sm:justify-center gap-3 shrink-0 sm:w-32 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4">
+                          {h.photo && (
+                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 shrink-0">
+                              <img src={h.photo} alt="Bài tập" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-2 w-full justify-end sm:justify-center">
+                            {h.status !== 'completed' && (
+                              <button 
+                                onClick={() => {
+                                  playSound('start');
+                                  setTimerMode('homework');
+                                  setFocusTime(30 * 60);
+                                  setIsFocusMode(true);
+                                  setAssistantMsg(`Bắt đầu làm bài ${h.subject} thôi nào!`);
+                                }}
+                                className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                title="Bắt đầu làm ngay"
+                              >
+                                <Play size={18} fill="currentColor" />
+                              </button>
+                            )}
+                            <button onClick={() => handleDelete(h.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
-          <p className="text-xl font-bold text-gray-400">Không có bài tập nào ở đây!</p>
-        </div>
-      )}
-    </div>
 
-    <div className="lg:col-span-1">
-      <AITutorChat />
+          {filteredHomework.length === 0 && (
+            <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+              <div className="flex justify-center mb-3">
+                <BookText size={48} className="text-gray-300" />
+              </div>
+              <p className="text-lg font-medium text-gray-500">Không có bài tập nào ở đây!</p>
+            </div>
+          )}
+        </div>
+
+    <div className="lg:col-span-1 space-y-6">
+      <Card className="bg-white border border-gray-200 p-6 shadow-sm rounded-2xl sticky top-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <Trophy className="text-yellow-500" size={24} />
+          Bảng Thành Tích
+        </h3>
+        
+        <div className="space-y-6">
+          {/* Overview Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col items-center justify-center text-center">
+              <BookText size={24} className="text-blue-500 mb-2" />
+              <span className="text-2xl font-black text-blue-700">{homework.length}</span>
+              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider mt-1">Tổng bài tập</span>
+            </div>
+            <div className="bg-green-50 p-4 rounded-xl border border-green-100 flex flex-col items-center justify-center text-center">
+              <CheckCircle2 size={24} className="text-green-500 mb-2" />
+              <span className="text-2xl font-black text-green-700">{homework.filter((h: any) => h.status === 'completed').length}</span>
+              <span className="text-xs font-semibold text-green-600 uppercase tracking-wider mt-1">Đã hoàn thành</span>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div>
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-sm font-bold text-gray-600">Tỷ lệ hoàn thành</span>
+              <span className="text-lg font-black text-green-600">
+                {homework.length > 0 ? Math.round((homework.filter((h: any) => h.status === 'completed').length / homework.length) * 100) : 0}%
+              </span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${homework.length > 0 ? Math.round((homework.filter((h: any) => h.status === 'completed').length / homework.length) * 100) : 0}%` }}
+                className="h-full bg-green-500"
+              />
+            </div>
+          </div>
+
+          <hr className="border-gray-100" />
+
+          {/* Other Stats */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Star size={18} className="text-yellow-600" />
+                </div>
+                <span className="font-semibold text-yellow-800">Sao tích lũy</span>
+              </div>
+              <span className="text-xl font-black text-yellow-600">{stars}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Timer size={18} className="text-indigo-600" />
+                </div>
+                <span className="font-semibold text-indigo-800">Thời gian tập trung</span>
+              </div>
+              <span className="text-xl font-black text-indigo-600">
+                {Math.round(studySessions.reduce((acc: number, s: any) => acc + s.duration, 0) / 60)}p
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-orange-50 rounded-xl border border-orange-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <TrendingUp size={18} className="text-orange-600" />
+                </div>
+                <span className="font-semibold text-orange-800">Chuỗi ngày học</span>
+              </div>
+              <span className="text-xl font-black text-orange-600">{stats.daysOnTime || 0}</span>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   </div>
 
   {isAdding && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-          <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-green-900">Thêm bài tập mới</h3>
-              <button onClick={() => setIsAdding(false)} className="text-gray-400 hover:text-gray-600">
-                <Plus size={24} className="rotate-45" />
+              <h3 className="text-xl font-bold text-gray-800">Thêm bài tập mới</h3>
+              <button onClick={() => setIsAdding(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                <Plus size={20} className="rotate-45" />
               </button>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">Môn học</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Môn học</label>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {Object.keys(SUBJECT_CONFIG).map(s => (
                     <button
@@ -1481,10 +2614,10 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
                           getAISuggestion(s as Subject);
                         }
                       }}
-                      className={`p-2 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${(!isCustomSubject && newSubject === s) || (isCustomSubject && s === 'Khác') ? 'border-green-500 bg-green-50' : 'border-gray-100'}`}
+                      className={`p-2 rounded-xl border transition-all flex flex-col items-center gap-1.5 ${(!isCustomSubject && newSubject === s) || (isCustomSubject && s === 'Khác') ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                     >
-                      {React.createElement(getSubjectConfig(s).icon, { size: 16, color: getSubjectConfig(s).color })}
-                      <span className="text-[10px] font-bold truncate w-full text-center">{s}</span>
+                      {React.createElement(getSubjectConfig(s).icon, { size: 18, color: getSubjectConfig(s).color })}
+                      <span className="text-[11px] font-medium truncate w-full text-center text-gray-600">{s}</span>
                     </button>
                   ))}
                 </div>
@@ -1496,18 +2629,18 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
                     placeholder="Nhập tên môn học..."
                     value={customSubject}
                     onChange={(e) => setCustomSubject(e.target.value)}
-                    className="w-full mt-2 p-3 rounded-xl border-2 border-green-100 focus:border-green-500 outline-none font-bold"
+                    className="w-full mt-3 p-2.5 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-sm"
                   />
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-500 mb-2">Nội dung bài tập</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nội dung bài tập</label>
                 <textarea 
                   value={newContent} 
                   onChange={(e) => setNewContent(e.target.value)}
                   placeholder="Ví dụ: Làm bài 1-5 trang 25 sách giáo khoa..."
-                  className="w-full p-4 rounded-2xl border-2 border-green-100 focus:border-green-500 outline-none font-bold min-h-[100px]"
+                  className="w-full p-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-sm min-h-[100px] resize-y"
                 />
                 
                 <AnimatePresence>
@@ -1516,11 +2649,11 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 p-3 bg-sparkles-50 rounded-xl border border-yellow-200 flex items-start gap-2 cursor-pointer hover:bg-yellow-50 transition-colors"
+                      className="mt-2 p-3 bg-yellow-50 rounded-xl border border-yellow-200 flex items-start gap-2 cursor-pointer hover:bg-yellow-100 transition-colors"
                       onClick={() => setNewContent(suggestion)}
                     >
-                      <Sparkles size={16} className="text-yellow-500 mt-0.5 shrink-0" />
-                      <p className="text-xs font-medium text-yellow-700 italic">Gợi ý: "{suggestion}"</p>
+                      <Sparkles size={16} className="text-yellow-600 mt-0.5 shrink-0" />
+                      <p className="text-sm text-yellow-800">Gợi ý: "{suggestion}"</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1528,39 +2661,42 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-500 mb-2">Hạn nộp bài</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Hạn nộp bài</label>
                   <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input 
                       type="date" 
                       value={newDueDate}
                       onChange={(e) => setNewDueDate(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 outline-none font-bold"
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-500 mb-2">Hình ảnh (nếu có)</label>
-                  <label className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-green-400 cursor-pointer transition-all">
-                    <Camera size={18} className="text-gray-400" />
-                    <span className="text-sm font-bold text-gray-400">Chụp ảnh / Tải lên</span>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Hình ảnh đính kèm</label>
+                  <label className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50 cursor-pointer transition-all">
+                    <Camera size={16} className="text-gray-500" />
+                    <span className="text-sm font-medium text-gray-600">Tải ảnh lên</span>
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
                   </label>
                 </div>
               </div>
 
               {photo && (
-                <div className="relative rounded-2xl overflow-hidden border-2 border-green-100 aspect-video">
+                <div className="relative w-full h-32 rounded-xl overflow-hidden border border-gray-200">
                   <img src={photo} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  <button onClick={() => setPhoto(null)} className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full shadow-lg">
-                    <Plus size={16} className="rotate-45" />
+                  <button 
+                    onClick={() => setPhoto(null)}
+                    className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-lg hover:bg-red-500 transition-colors"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               )}
 
               <div className="flex gap-3 pt-4">
-                <Button onClick={() => setIsAdding(false)} variant="secondary" className="flex-1 bg-gray-200 text-gray-600 shadow-[0_4px_0_rgb(156,163,175)]">Hủy</Button>
-                <Button onClick={handleAdd} className="flex-1" variant="secondary">Lưu lại</Button>
+                <Button onClick={() => setIsAdding(false)} variant="outline" className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">Hủy</Button>
+                <Button onClick={handleAdd} className="flex-1 bg-green-600 hover:bg-green-700 text-white">Lưu lại</Button>
               </div>
             </div>
           </motion.div>
@@ -2097,6 +3233,115 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   );
 };
 
+const Leaderboard = ({ user, stats }: { user: any, stats: any }) => {
+  const [leaders, setLeaders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const q = query(
+          collection(db, 'users'),
+          orderBy('weeklyStars', 'desc'),
+          limit(10)
+        );
+        const snapshot = await getDocs(q);
+        const fetchedLeaders = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setLeaders(fetchedLeaders);
+
+        const currentUserInTop10 = fetchedLeaders.findIndex(l => l.id === user?.uid);
+        if (currentUserInTop10 !== -1) {
+          setCurrentUserRank(currentUserInTop10 + 1);
+        } else if (user && stats) {
+          // Fetch exact rank if not in top 10
+          const countQ = query(
+            collection(db, 'users'), 
+            where('weeklyStars', '>', stats.weeklyStars || 0)
+          );
+          const countSnapshot = await getCountFromServer(countQ);
+          setCurrentUserRank(countSnapshot.data().count + 1);
+        } else {
+          setCurrentUserRank(null);
+        }
+      } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchLeaderboard();
+    }
+  }, [user]);
+
+  return (
+    <Card className="border-yellow-100 bg-gradient-to-br from-white to-yellow-50/30">
+      <h3 className="text-xl font-bold text-gray-700 mb-6 flex items-center gap-2">
+        <Trophy className="text-yellow-500" /> Bảng xếp hạng tuần
+      </h3>
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-yellow-500" size={32} /></div>
+      ) : (
+        <div className="space-y-3">
+          {leaders.map((leader, index) => {
+            const isCurrentUser = leader.id === user?.uid;
+            return (
+              <div key={leader.id} className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all ${isCurrentUser ? 'bg-yellow-50 border-yellow-300 shadow-sm' : 'bg-white border-gray-100'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg ${
+                    index === 0 ? 'bg-gradient-to-br from-yellow-300 to-yellow-500 text-white shadow-md' : 
+                    index === 1 ? 'bg-gradient-to-br from-gray-200 to-gray-400 text-white shadow-sm' : 
+                    index === 2 ? 'bg-gradient-to-br from-orange-300 to-orange-500 text-white shadow-sm' : 
+                    'bg-gray-100 text-gray-500'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <div className="font-bold text-gray-800">
+                    {leader.userName || 'Học sinh ẩn danh'} 
+                    {isCurrentUser && <span className="text-[10px] bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full ml-2 uppercase font-black">Bạn</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 font-black text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100">
+                  {leader.weeklyStars || 0} <Star size={16} className="fill-current" />
+                </div>
+              </div>
+            );
+          })}
+          
+          {currentUserRank !== null && currentUserRank > 10 && user && (
+            <>
+              <div className="flex justify-center py-2 gap-2">
+                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-2xl border-2 bg-yellow-50 border-yellow-300 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg bg-gray-100 text-gray-500">
+                    {currentUserRank}
+                  </div>
+                  <div className="font-bold text-gray-800">
+                    {stats.userName || 'Học sinh ẩn danh'} 
+                    <span className="text-[10px] bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full ml-2 uppercase font-black">Bạn</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 font-black text-yellow-600 bg-yellow-100 px-3 py-1.5 rounded-xl border border-yellow-200">
+                  {stats.weeklyStars || 0} <Star size={16} className="fill-current" />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+};
+
 const AchievementsView = ({ state, actions }: { state: any, actions: any }) => {
 
 const { user, stars, schedule, homework, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay } = state;
@@ -2257,6 +3502,10 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Leaderboard user={user} stats={stats} />
+      </div>
+
       {stats.stickers && stats.stickers.length > 0 && (
         <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100">
           <h3 className="text-xl font-bold text-indigo-900 mb-6 flex items-center gap-2">
@@ -2275,6 +3524,537 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
           </div>
         </Card>
       )}
+
+      {SHOP_ITEMS.supplies && SHOP_ITEMS.supplies.some(item => stats.unlockedItems?.includes(item.id)) && (
+        <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100">
+          <h3 className="text-xl font-bold text-emerald-900 mb-6 flex items-center gap-2">
+            <BookOpen className="text-emerald-500" /> Bộ sưu tập Dụng cụ học tập
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {SHOP_ITEMS.supplies.filter(item => stats.unlockedItems?.includes(item.id)).map((item) => (
+              <motion.div 
+                key={item.id}
+                whileHover={{ scale: 1.05, y: -5 }}
+                className="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center border-2 border-emerald-100 cursor-pointer"
+              >
+                <div className="text-4xl mb-2">{item.icon}</div>
+                <div className="font-bold text-emerald-900 text-sm">{item.name}</div>
+              </motion.div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+const ProfileView = ({ state, actions }: { state: any, actions: any }) => {
+  const { user, stats } = state;
+  const { setAssistantMsg, updateProfile } = actions;
+  const profile = stats.profile || {};
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    avatar: profile.avatar || '',
+    fullName: profile.fullName || '',
+    nickname: profile.nickname || '',
+    dateOfBirth: profile.dateOfBirth || '',
+    gender: profile.gender || '',
+    school: profile.school || '',
+    className: profile.className || '',
+    homeroomTeacher: profile.homeroomTeacher || '',
+    schoolYear: profile.schoolYear || '',
+    favoriteSubjects: profile.favoriteSubjects || [],
+    interests: profile.interests || [],
+    parentName: profile.parentName || '',
+    parentPhone: profile.parentPhone || '',
+    bio: profile.bio || ''
+  });
+
+  const [interestInput, setInterestInput] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubjectToggle = (subject: string) => {
+    setFormData(prev => {
+      const current = prev.favoriteSubjects;
+      if (current.includes(subject)) {
+        return { ...prev, favoriteSubjects: current.filter((s: string) => s !== subject) };
+      } else {
+        return { ...prev, favoriteSubjects: [...current, subject] };
+      }
+    });
+  };
+
+  const handleAddInterest = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && interestInput.trim()) {
+      e.preventDefault();
+      if (!formData.interests.includes(interestInput.trim())) {
+        setFormData(prev => ({ ...prev, interests: [...prev.interests, interestInput.trim()] }));
+      }
+      setInterestInput('');
+    }
+  };
+
+  const handleRemoveInterest = (interest: string) => {
+    setFormData(prev => ({ ...prev, interests: prev.interests.filter((i: string) => i !== interest) }));
+  };
+
+  const handleSave = () => {
+    updateProfile(formData);
+    setIsEditing(false);
+    setAssistantMsg("Hồ sơ của bạn đã được cập nhật thành công! 🎉");
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        alert("Kích thước ảnh quá lớn. Vui lòng chọn ảnh dưới 1MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, avatar: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const ALL_SUBJECTS = Object.keys(SUBJECT_CONFIG);
+
+  // Calculate profile completion
+  const profileFields = ['avatar', 'fullName', 'nickname', 'dateOfBirth', 'gender', 'school', 'className', 'homeroomTeacher', 'schoolYear', 'parentName', 'parentPhone', 'bio'];
+  const filledFields = profileFields.filter(field => formData[field as keyof typeof formData]).length + (formData.favoriteSubjects.length > 0 ? 1 : 0) + (formData.interests.length > 0 ? 1 : 0);
+  const totalFields = profileFields.length + 2;
+  const completionRate = Math.round((filledFields / totalFields) * 100);
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto pb-10">
+      {/* Header Actions */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-black text-gray-800 flex items-center gap-3">
+          <User className="text-blue-500" size={32} />
+          Hồ sơ cá nhân
+        </h2>
+        {!isEditing ? (
+          <Button onClick={() => setIsEditing(true)} className="bg-blue-500 hover:bg-blue-600 shadow-md">
+            <Edit2 size={20} /> Chỉnh sửa
+          </Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button onClick={() => setIsEditing(false)} variant="outline" className="bg-white">
+              Hủy
+            </Button>
+            <Button onClick={handleSave} className="bg-green-500 hover:bg-green-600 shadow-md">
+              <Check size={20} /> Lưu
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Hero Section */}
+      <div className="bg-white rounded-[32px] shadow-xl overflow-hidden border-4 border-white relative">
+        <div className="h-40 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          <motion.div 
+            animate={{ 
+              x: [0, 100, 0],
+              y: [0, -50, 0],
+              opacity: [0.3, 0.6, 0.3]
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            className="absolute -top-20 -left-20 w-64 h-64 bg-white rounded-full mix-blend-overlay filter blur-3xl"
+          />
+          <motion.div 
+            animate={{ 
+              x: [0, -100, 0],
+              y: [0, 50, 0],
+              opacity: [0.3, 0.6, 0.3]
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute -bottom-20 -right-20 w-80 h-80 bg-white rounded-full mix-blend-overlay filter blur-3xl"
+          />
+        </div>
+        
+        <div className="px-6 sm:px-10 pb-8 relative">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 -mt-16 sm:-mt-20 mb-6">
+            <div className="relative group">
+              <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white rounded-full p-2 shadow-xl">
+                <div className="w-full h-full bg-blue-50 rounded-full overflow-hidden flex items-center justify-center text-6xl">
+                  {formData.avatar ? (
+                    <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>👦</span>
+                  )}
+                </div>
+              </div>
+              {isEditing && (
+                <label className="absolute bottom-2 right-2 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 cursor-pointer transition-transform hover:scale-110">
+                  <Camera size={20} />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                </label>
+              )}
+            </div>
+            
+            <div className="text-center sm:text-left flex-1">
+              <h1 className="text-3xl sm:text-4xl font-black text-gray-800 mb-1">
+                {formData.fullName || stats.userName || 'Chưa cập nhật tên'}
+              </h1>
+              <p className="text-lg text-gray-500 font-bold mb-4">
+                {formData.nickname ? `"${formData.nickname}"` : 'Thêm biệt danh cho vui nhé!'}
+              </p>
+              
+              {/* Profile Completion Bar */}
+              <div className="max-w-md bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                <div className="flex justify-between text-sm font-bold mb-2">
+                  <span className="text-gray-600">Mức độ hoàn thiện hồ sơ</span>
+                  <span className="text-blue-600">{completionRate}%</span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionRate}%` }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-6">
+            <div className="text-center p-4 rounded-2xl bg-yellow-50 border border-yellow-100">
+              <Star className="mx-auto text-yellow-500 fill-yellow-500 mb-2" size={28} />
+              <div className="text-2xl font-black text-yellow-700">{stats.stars || 0}</div>
+              <div className="text-xs font-bold text-yellow-600 uppercase mt-1">Sao hiện có</div>
+            </div>
+            <div className="text-center p-4 rounded-2xl bg-green-50 border border-green-100">
+              <CheckCircle className="mx-auto text-green-500 mb-2" size={28} />
+              <div className="text-2xl font-black text-green-700">{stats.homeworkCompleted || 0}</div>
+              <div className="text-xs font-bold text-green-600 uppercase mt-1">Bài đã làm</div>
+            </div>
+            <div className="text-center p-4 rounded-2xl bg-blue-50 border border-blue-100">
+              <Calendar className="mx-auto text-blue-500 mb-2" size={28} />
+              <div className="text-2xl font-black text-blue-700">{stats.daysOnTime || 0}</div>
+              <div className="text-xs font-bold text-blue-600 uppercase mt-1">Ngày đúng giờ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Thông tin học sinh */}
+        <Card className="border-blue-100 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
+              <User size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-blue-900">Thông tin cơ bản</h3>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Họ và tên</label>
+              {isEditing ? (
+                <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-colors font-medium" placeholder="Nguyễn Văn A" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">{formData.fullName || 'Chưa cập nhật'}</div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-500 mb-1">Biệt danh</label>
+                {isEditing ? (
+                  <input type="text" name="nickname" value={formData.nickname} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-colors font-medium" placeholder="Tí, Tèo..." />
+                ) : (
+                  <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">{formData.nickname || 'Chưa cập nhật'}</div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-500 mb-1">Giới tính</label>
+                {isEditing ? (
+                  <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none bg-white transition-colors font-medium">
+                    <option value="">Chọn...</option>
+                    <option value="male">Nam</option>
+                    <option value="female">Nữ</option>
+                    <option value="other">Khác</option>
+                  </select>
+                ) : (
+                  <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">
+                    {formData.gender === 'male' ? 'Nam' : formData.gender === 'female' ? 'Nữ' : formData.gender === 'other' ? 'Khác' : 'Chưa cập nhật'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Ngày sinh</label>
+              {isEditing ? (
+                <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-colors font-medium" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">
+                  {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Giới thiệu bản thân</label>
+              {isEditing ? (
+                <textarea name="bio" value={formData.bio} onChange={handleChange as any} rows={3} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none transition-colors font-medium resize-none" placeholder="Hãy viết vài dòng về bản thân bạn nhé..." />
+              ) : (
+                <div className="font-medium text-gray-700 text-base bg-gray-50 p-4 rounded-xl border border-transparent italic">
+                  {formData.bio ? `"${formData.bio}"` : 'Chưa có lời giới thiệu nào.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Thông tin trường học */}
+        <Card className="border-green-100 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-green-100 p-3 rounded-2xl text-green-600">
+              <BookOpen size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-green-900">Trường lớp</h3>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Trường học</label>
+              {isEditing ? (
+                <input type="text" name="school" value={formData.school} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-green-400 outline-none transition-colors font-medium" placeholder="Trường Tiểu học ABC" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent flex items-center gap-2">
+                  <span className="text-xl">🏫</span> {formData.school || 'Chưa cập nhật'}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-500 mb-1">Lớp</label>
+                {isEditing ? (
+                  <input type="text" name="className" value={formData.className} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-green-400 outline-none transition-colors font-medium" placeholder="5A" />
+                ) : (
+                  <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent flex items-center gap-2">
+                    <span className="text-xl">📚</span> {formData.className || 'Chưa cập nhật'}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-500 mb-1">Năm học</label>
+                {isEditing ? (
+                  <input type="text" name="schoolYear" value={formData.schoolYear} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-green-400 outline-none transition-colors font-medium" placeholder="2025 - 2026" />
+                ) : (
+                  <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent flex items-center gap-2">
+                    <span className="text-xl">📅</span> {formData.schoolYear || 'Chưa cập nhật'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Giáo viên chủ nhiệm</label>
+              {isEditing ? (
+                <input type="text" name="homeroomTeacher" value={formData.homeroomTeacher} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-green-400 outline-none transition-colors font-medium" placeholder="Cô Lan" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent flex items-center gap-2">
+                  <span className="text-xl">👩‍🏫</span> {formData.homeroomTeacher || 'Chưa cập nhật'}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Sở thích & Môn học */}
+        <Card className="border-purple-100 md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-purple-100 p-3 rounded-2xl text-purple-600">
+              <Star size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-purple-900">Sở thích & Môn học</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-3">Môn học yêu thích</label>
+              {isEditing ? (
+                <div className="flex flex-wrap gap-2">
+                  {ALL_SUBJECTS.map(subject => (
+                    <button
+                      key={subject}
+                      onClick={() => handleSubjectToggle(subject)}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${formData.favoriteSubjects.includes(subject) ? 'bg-purple-500 text-white border-purple-500 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-100 hover:border-purple-200 hover:bg-purple-50'}`}
+                    >
+                      {subject}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 bg-gray-50 p-4 rounded-2xl min-h-[100px]">
+                  {formData.favoriteSubjects.length > 0 ? (
+                    formData.favoriteSubjects.map((subject: string) => (
+                      <span key={subject} className="bg-purple-100 text-purple-800 px-4 py-2 rounded-xl text-sm font-black shadow-sm">
+                        {subject}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic flex items-center justify-center w-full">Chưa chọn môn học nào</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-3">Sở thích cá nhân</label>
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Thêm sở thích (nhấn Enter)..."
+                      value={interestInput}
+                      onChange={(e) => setInterestInput(e.target.value)}
+                      onKeyDown={handleAddInterest}
+                      className="flex-1 p-3 text-sm rounded-xl border-2 border-gray-100 focus:border-purple-400 outline-none transition-colors font-medium"
+                    />
+                    <Button onClick={() => handleAddInterest({ key: 'Enter', preventDefault: () => {} } as any)} className="bg-purple-500 hover:bg-purple-600 rounded-xl">
+                      Thêm
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.interests.map((interest: string, idx: number) => (
+                      <span key={idx} className="flex items-center gap-2 bg-pink-50 text-pink-700 px-3 py-1.5 rounded-xl text-sm font-bold border border-pink-200">
+                        {interest}
+                        <button onClick={() => handleRemoveInterest(interest)} className="hover:text-pink-900 bg-pink-100 p-1 rounded-full"><X size={14} /></button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 bg-gray-50 p-4 rounded-2xl min-h-[100px]">
+                  {formData.interests.length > 0 ? (
+                    formData.interests.map((interest: string, idx: number) => (
+                      <span key={idx} className="bg-pink-100 text-pink-800 px-4 py-2 rounded-xl text-sm font-black shadow-sm">
+                        {interest}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic flex items-center justify-center w-full">Chưa thêm sở thích nào</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Huy hiệu & Thành tích */}
+        <Card className="border-yellow-100 md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-yellow-100 p-3 rounded-2xl text-yellow-600">
+              <Trophy size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-yellow-900">Huy hiệu & Thành tích</h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all ${stats.homeworkCompleted >= 5 ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-green-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-2xl">
+                📚
+              </div>
+              <div className="font-black text-sm text-gray-800">Chăm chỉ</div>
+              <div className="text-xs font-bold text-gray-500 mt-1">Làm 5 bài tập</div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all ${stats.stars >= 50 ? 'bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-2xl">
+                ⭐
+              </div>
+              <div className="font-black text-sm text-gray-800">Ngôi sao</div>
+              <div className="text-xs font-bold text-gray-500 mt-1">Đạt 50 sao</div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all ${stats.daysOnTime >= 3 ? 'bg-gradient-to-br from-blue-50 to-cyan-100 border-blue-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-2xl">
+                ⏰
+              </div>
+              <div className="font-black text-sm text-gray-800">Đúng giờ</div>
+              <div className="text-xs font-bold text-gray-500 mt-1">3 ngày đúng giờ</div>
+            </div>
+
+            <div className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all ${completionRate === 100 ? 'bg-gradient-to-br from-purple-50 to-fuchsia-100 border-purple-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60 grayscale'}`}>
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-2xl">
+                🏆
+              </div>
+              <div className="font-black text-sm text-gray-800">Hoàn hảo</div>
+              <div className="text-xs font-bold text-gray-500 mt-1">Hồ sơ 100%</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Kỷ lục trò chơi */}
+        <Card className="border-pink-100 md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-pink-100 p-3 rounded-2xl text-pink-600">
+              <Gamepad2 size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-pink-900">Kỷ lục trò chơi</h3>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {[
+              { id: 'math', name: 'Toán học', icon: '🧮', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+              { id: 'emoji', name: 'Nhanh mắt', icon: '🔍', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { id: 'word', name: 'Ghép chữ', icon: '🔡', color: 'bg-green-50 text-green-700 border-green-200' },
+              { id: 'memory', name: 'Lật hình', icon: '🧠', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { id: 'dino', name: 'Khủng long', icon: '🦖', color: 'bg-orange-50 text-orange-700 border-orange-200' }
+            ].map(game => (
+              <div key={game.id} className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center text-center ${game.color}`}>
+                <div className="text-3xl mb-2">{game.icon}</div>
+                <div className="font-bold text-sm mb-1">{game.name}</div>
+                <div className="text-xl font-black">{stats.highScores?.[game.id] || 0}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Thông tin liên hệ */}
+        <Card className="border-orange-100 md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-orange-100 p-3 rounded-2xl text-orange-600">
+              <MessageSquare size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-orange-900">Thông tin liên hệ (Tùy chọn)</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Tên phụ huynh</label>
+              {isEditing ? (
+                <input type="text" name="parentName" value={formData.parentName} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-orange-400 outline-none transition-colors font-medium" placeholder="Nguyễn Văn B" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">{formData.parentName || 'Chưa cập nhật'}</div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-500 mb-1">Số điện thoại phụ huynh</label>
+              {isEditing ? (
+                <input type="tel" name="parentPhone" value={formData.parentPhone} onChange={handleChange} className="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-orange-400 outline-none transition-colors font-medium" placeholder="090xxxxxxx" />
+              ) : (
+                <div className="font-bold text-gray-800 text-lg bg-gray-50 p-3 rounded-xl border border-transparent">{formData.parentPhone || 'Chưa cập nhật'}</div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
@@ -2353,8 +4133,71 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
   const dinoYRef = useRef(0);
   const dinoVelocityRef = useRef(0);
   const [dinoObstacles, setDinoObstacles] = useState<{id: number, x: number, type: string}[]>([]);
+  const dinoObstaclesRef = useRef<{id: number, x: number, type: string}[]>([]);
   const [dinoFrame, setDinoFrame] = useState(0);
   const dinoScoreRef = useRef(0);
+
+  // Word Rescue State
+  const [wordRescueTarget, setWordRescueTarget] = useState({ word: '', translation: '' });
+  const [wordRescueMissingIndex, setWordRescueMissingIndex] = useState(0);
+  const [wordRescueIsComplete, setWordRescueIsComplete] = useState(false);
+  const [wordRescueLetters, setWordRescueLetters] = useState<{id: number, char: string, x: number, y: number, speed: number}[]>([]);
+  const [wordRescueBirdY, setWordRescueBirdY] = useState(50);
+  const wordRescueBirdYRef = useRef(50);
+  const [wordRescueLevel, setWordRescueLevel] = useState(1);
+
+  // Situation Game State
+  const [currentSituation, setCurrentSituation] = useState<any>(null);
+  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
+  const [situationStep, setSituationStep] = useState<'content' | 'explanation' | 'question'>('content');
+  const [situationFeedback, setSituationFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const [usedSituationIndices, setUsedSituationIndices] = useState<number[]>([]);
+
+  const generateSituation = (resetUsed = false) => {
+    const currentUsed = resetUsed ? [] : usedSituationIndices;
+    const available = SITUATIONS.filter((_, i) => !currentUsed.includes(i));
+
+    if (available.length === 0) {
+      setUsedSituationIndices([]);
+      generateSituation(true);
+      return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * available.length);
+    const selected = available[randomIndex];
+    const originalIndex = SITUATIONS.indexOf(selected);
+
+    // Shuffle options
+    const options = [...selected.options];
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+    setShuffledOptions(options);
+
+    setUsedSituationIndices(prev => [...prev, originalIndex]);
+    setCurrentSituation(selected);
+    setSituationStep('content');
+    setSituationFeedback(null);
+  };
+
+  const handleSituationAnswer = (option: string) => {
+    if (situationFeedback) return;
+    if (option === currentSituation.answer) {
+      setSituationFeedback('correct');
+      setScore(prev => prev + 20);
+      playSound('success');
+      addFloatingPoint(50, 40, "+20");
+      setAssistantMsg("Tuyệt vời! Bạn đã chọn đúng rồi đấy! ✨");
+      
+      // Removed automatic transition to allow manual "Next" button
+    } else {
+      setSituationFeedback('incorrect');
+      playSound('delete');
+      setAssistantMsg("Hic, chưa đúng rồi. Hãy đọc kỹ lại nhé! 🧐");
+      setTimeout(() => setSituationFeedback(null), 1500);
+    }
+  };
 
   // Joke State
   const [currentJokes, setCurrentJokes] = useState<string[]>([]);
@@ -2404,6 +4247,8 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     { id: 'memory', name: 'Lật hình', icon: '🧠', color: 'bg-purple-500', textColor: 'text-purple-600', bgColor: 'bg-purple-50', description: 'Thử thách trí nhớ!' },
     { id: 'sticker', name: 'Góc sáng tạo', icon: '🎨', color: 'bg-yellow-500', textColor: 'text-yellow-600', bgColor: 'bg-yellow-50', description: 'Dán sticker vào tranh!' },
     { id: 'dino', name: 'Khủng long', icon: '🦖', color: 'bg-orange-500', textColor: 'text-orange-600', bgColor: 'bg-orange-50', description: 'Nhảy qua vật cản!' },
+    { id: 'wordRescue', name: 'Giải cứu từ', icon: '🦜', color: 'bg-indigo-500', textColor: 'text-indigo-600', bgColor: 'bg-indigo-50', description: 'Giúp chim bay cao!' },
+    { id: 'situation', name: 'Tình huống', icon: '🎭', color: 'bg-cyan-500', textColor: 'text-cyan-600', bgColor: 'bg-cyan-50', description: 'Học cách ứng xử hay!' },
     { id: 'joke', name: 'Truyện cười', icon: '😂', color: 'bg-teal-500', textColor: 'text-teal-600', bgColor: 'bg-teal-50', description: 'Cười chút cho vui!' },
   ];
 
@@ -2453,7 +4298,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       return;
     }
 
-    const selected = filteredWords[Math.floor(Math.random() * filteredWords.length)];
+    const selected = filteredWords[Math.floor(Math.random() * filteredWords.length)] || filteredWords[0] || WORD_LIST[0];
     const originalIndex = WORD_LIST.findIndex(w => w.word === selected.word);
     
     setUsedWordIndices(prev => resetUsed ? [originalIndex] : [...prev, originalIndex]);
@@ -2473,13 +4318,26 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     setFlippedIndices([]);
   };
 
+  const generateWordRescue = () => {
+    const selected = WORD_RESCUE_LIST[Math.floor(Math.random() * WORD_RESCUE_LIST.length)];
+    const missingIndex = Math.floor(Math.random() * selected.word.length);
+    
+    setWordRescueTarget({ word: selected.word, translation: selected.translation });
+    setWordRescueMissingIndex(missingIndex);
+    setWordRescueIsComplete(false);
+    setWordRescueLetters([]);
+    setWordRescueBirdY(50);
+    wordRescueBirdYRef.current = 50;
+  };
+
   const startGame = (gameId: string) => {
     setSelectedGame(gameId);
-    if (gameId === 'joke') {
+    if (gameId === 'joke' || gameId === 'situation') {
       setScore(0);
-      setTimeLeft(0); // No timer for jokes
+      setTimeLeft(0); // No timer for jokes or situations
       setGameState('playing');
-      generateJokes();
+      if (gameId === 'joke') generateJokes();
+      if (gameId === 'situation') generateSituation(true);
     } else {
       setGameState('difficulty');
     }
@@ -2514,8 +4372,17 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       dinoYRef.current = 0;
       dinoVelocityRef.current = 0;
       dinoScoreRef.current = 0;
-      setDinoObstacles([{ id: Date.now(), x: 100, type: '🌵' }]);
+      const initialObstacles = [{ id: Date.now(), x: 100, type: '🌵' }];
+      setDinoObstacles(initialObstacles);
+      dinoObstaclesRef.current = initialObstacles;
       setDinoFrame(0);
+    }
+    if (selectedGame === 'wordRescue') {
+      generateWordRescue();
+      setWordRescueLevel(1);
+    }
+    if (selectedGame === 'situation') {
+      generateSituation(true);
     }
   };
 
@@ -2523,7 +4390,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
     let timer: any = null;
     if (gameState === 'playing' && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0 && gameState === 'playing' && selectedGame !== 'joke') {
+    } else if (timeLeft === 0 && gameState === 'playing' && selectedGame !== 'joke' && selectedGame !== 'situation') {
       const finalizeGame = async () => {
         setGameState('end');
         const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
@@ -2744,31 +4611,14 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
       setDinoY(dinoYRef.current);
 
       // Obstacles and Collision
-      let collisionDetected = false;
-      let scoreIncrement = 0;
-
-      setDinoObstacles(obs => {
-        const speed = difficulty === 'easy' ? 2.5 : difficulty === 'medium' ? 3.5 : 4.5;
-        const moved = obs.map(o => ({ ...o, x: o.x - speed }));
-        
-        // Collision detection
-        for (const o of moved) {
-          if (o.x > 12 && o.x < 18 && dinoYRef.current < 20) {
-             collisionDetected = true;
-             return moved;
-          }
-        }
-
-        const filtered = moved.filter(o => o.x > -10);
-        if (filtered.length < 2 && Math.random() < 0.03 && (filtered.length === 0 || filtered[filtered.length-1].x < 60)) {
-           filtered.push({ id: Date.now(), x: 100, type: ['🌵', '🌵', '🌱', '🌿'][Math.floor(Math.random() * 4)] });
-           scoreIncrement = 5;
-        }
-        return filtered;
-      });
-
-      // Handle side effects outside of the functional update
-      if (collisionDetected) {
+      const speed = difficulty === 'easy' ? 2.5 : difficulty === 'medium' ? 3.5 : 4.5;
+      const moved = dinoObstaclesRef.current.map(o => ({ ...o, x: o.x - speed }));
+      
+      // Collision detection (Dino is at left: 15%)
+      // Dino hitbox: x from 12 to 18, y up to 35
+      const collision = moved.find(o => o.x > 8 && o.x < 22 && dinoYRef.current < 35);
+      
+      if (collision) {
         setGameState('end');
         playSound('delete');
         const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
@@ -2776,7 +4626,21 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
           addStars(Math.floor((dinoScoreRef.current / 5) * multiplier), `chơi game Khủng long (${difficulty})`);
         }
         clearInterval(gameLoop);
-      } else if (scoreIncrement > 0) {
+        return;
+      }
+
+      // Filter off-screen and add new obstacles
+      let scoreIncrement = 0;
+      let filtered = moved.filter(o => o.x > -10);
+      if (filtered.length < 2 && Math.random() < 0.03 && (filtered.length === 0 || filtered[filtered.length-1].x < 60)) {
+         filtered.push({ id: Date.now(), x: 100, type: ['🌵', '🌵', '🌱', '🌿'][Math.floor(Math.random() * 4)] });
+         scoreIncrement = 5;
+      }
+
+      dinoObstaclesRef.current = filtered;
+      setDinoObstacles(filtered);
+
+      if (scoreIncrement > 0) {
         dinoScoreRef.current += scoreIncrement;
         setScore(dinoScoreRef.current);
       }
@@ -2784,6 +4648,91 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
 
     return () => clearInterval(gameLoop);
   }, [selectedGame, gameState, difficulty]);
+
+  useEffect(() => {
+    if (selectedGame !== 'wordRescue' || gameState !== 'playing') return;
+
+    const gameLoop = setInterval(() => {
+      if (wordRescueIsComplete || !wordRescueTarget.word) return;
+
+      // Move letters down
+      setWordRescueLetters(prev => {
+        const speed = difficulty === 'easy' ? 0.8 : difficulty === 'medium' ? 1.2 : 1.6;
+        const moved = prev.map(l => ({ ...l, y: l.y + speed }));
+        
+        // Add new letters
+        if (Math.random() < 0.05 && moved.length < 10) {
+          // 30% chance of being the correct missing letter, 70% random
+          const correctChar = wordRescueTarget.word[wordRescueMissingIndex]?.toUpperCase();
+          if (!correctChar) return moved;
+
+          const isCorrect = Math.random() < 0.3;
+          const char = isCorrect ? correctChar : String.fromCharCode(65 + Math.floor(Math.random() * 26));
+          
+          if (char) {
+            moved.push({
+              id: Date.now() + Math.random(),
+              char,
+              x: 10 + Math.random() * 80,
+              y: -10,
+              speed: speed * (0.8 + Math.random() * 0.4)
+            });
+          }
+        }
+        
+        return moved.filter(l => l.y < 110);
+      });
+
+      // Bird physics (slowly falls if not rescued)
+      wordRescueBirdYRef.current = Math.max(0, wordRescueBirdYRef.current - 0.1);
+      setWordRescueBirdY(wordRescueBirdYRef.current);
+
+      if (wordRescueBirdYRef.current <= 0) {
+        setGameState('end');
+        playSound('delete');
+        const multiplier = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 1.5 : 2;
+        if (score > 0) {
+          addStars(Math.floor((score / 5) * multiplier), `chơi game Giải cứu từ (${difficulty})`);
+        }
+      }
+    }, 50);
+
+    return () => clearInterval(gameLoop);
+  }, [selectedGame, gameState, difficulty, wordRescueTarget, wordRescueMissingIndex, wordRescueIsComplete, score]);
+
+  const handleWordRescueLetterClick = (letter: {id: number, char: string}) => {
+    if (wordRescueIsComplete || !wordRescueTarget.word) return;
+
+    const correctChar = wordRescueTarget.word[wordRescueMissingIndex]?.toUpperCase();
+    if (!correctChar) return;
+
+    if (letter.char.toUpperCase() === correctChar) {
+      // Correct
+      setWordRescueIsComplete(true);
+      setWordRescueLetters([]);
+      
+      // Bird flies up
+      wordRescueBirdYRef.current = Math.min(90, wordRescueBirdYRef.current + 20);
+      setWordRescueBirdY(wordRescueBirdYRef.current);
+      
+      setScore(prev => prev + 20);
+      playSound('pop');
+      addFloatingPoint(50, 40, "+20");
+      setAssistantMsg(`Chính xác! ${wordRescueTarget.word} nghĩa là ${wordRescueTarget.translation}`);
+
+      setTimeout(() => {
+        generateWordRescue();
+        setWordRescueLevel(prev => prev + 1);
+      }, 2500);
+    } else {
+      // Incorrect
+      wordRescueBirdYRef.current = Math.max(0, wordRescueBirdYRef.current - 10);
+      setWordRescueBirdY(wordRescueBirdYRef.current);
+      setWordRescueLetters(prev => prev.filter(l => l.id !== letter.id));
+      playSound('delete');
+      setAssistantMsg("Ôi không! Nhầm chữ rồi, thử lại nhé!");
+    }
+  };
 
   const currentGame = games.find(g => g.id === selectedGame) || games[0];
 
@@ -2862,7 +4811,7 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
         <div className="space-y-6">
           <Card className={`${currentGame.bgColor} border-${currentGame.id === 'math' ? 'pink' : currentGame.id === 'emoji' ? 'blue' : 'green'}-200 min-h-[500px] relative overflow-hidden`}>
             {/* Header Stats */}
-            {selectedGame !== 'joke' && (
+            {selectedGame !== 'joke' && selectedGame !== 'situation' && (
               <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-4">
                   <div className="bg-white px-4 py-2 rounded-2xl font-black text-gray-700 shadow-sm border-2 border-white flex items-center gap-2">
@@ -3043,81 +4992,165 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
               )}
 
               {selectedGame === 'sticker' && stickerScene && (
-                <div className="w-full max-w-2xl space-y-6">
-                  <div className="text-center">
-                    <h3 className="text-2xl font-black text-yellow-600 uppercase tracking-widest">Chủ đề: {stickerScene.name}</h3>
-                    <p className="text-gray-500 font-bold">Nhấn vào ô tròn rồi chọn sticker đúng nhé!</p>
+                <div className="w-full max-w-4xl space-y-8">
+                  <div className="text-center space-y-2">
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="inline-block px-6 py-2 bg-yellow-100 rounded-full border-2 border-yellow-200"
+                    >
+                      <h3 className="text-xl font-black text-yellow-700 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Palette className="w-6 h-6" />
+                        Chủ đề: {stickerScene.name}
+                      </h3>
+                    </motion.div>
+                    <p className="text-gray-500 font-medium text-lg">Chọn sticker bên dưới và dán vào đúng vị trí nhé! ✨</p>
                   </div>
 
-                  <div className={`relative w-full aspect-video rounded-[40px] shadow-2xl overflow-hidden border-8 border-white ${stickerScene.bgColor}`}>
-                    {/* Scene Background Elements */}
-                    <div className="absolute inset-0 opacity-20 pointer-events-none">
-                      <div className="absolute top-10 left-10 w-20 h-20 rounded-full bg-white/30 blur-xl" />
-                      <div className="absolute bottom-20 right-20 w-40 h-40 rounded-full bg-white/20 blur-2xl" />
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+                    {/* Scene Canvas */}
+                    <div className="lg:col-span-3">
+                      <div className={`relative w-full aspect-video rounded-[48px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] overflow-hidden border-[12px] border-white ring-4 ring-yellow-100/50 ${stickerScene.bgColor} transition-colors duration-700`}>
+                        {/* Dynamic Background Decorations */}
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                          <motion.div 
+                            animate={{ 
+                              scale: [1, 1.2, 1],
+                              rotate: [0, 90, 0],
+                              opacity: [0.1, 0.2, 0.1]
+                            }}
+                            transition={{ duration: 20, repeat: Infinity }}
+                            className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-white blur-[100px]" 
+                          />
+                          <motion.div 
+                            animate={{ 
+                              scale: [1, 1.3, 1],
+                              x: [0, 50, 0],
+                              opacity: [0.1, 0.15, 0.1]
+                            }}
+                            transition={{ duration: 15, repeat: Infinity }}
+                            className="absolute -bottom-40 -right-20 w-[400px] h-[400px] rounded-full bg-yellow-200 blur-[120px]" 
+                          />
+                          
+                          {/* Grid Overlay for texture */}
+                          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+                        </div>
+
+                        {/* Slots */}
+                        {stickerScene.slots.map((slot: any) => {
+                          const isPlaced = placedStickers.includes(slot.id);
+                          const isActive = activeSlotId === slot.id;
+                          const isError = hasErrorInCurrentSlot && isActive;
+
+                          return (
+                            <div 
+                              key={slot.id}
+                              style={{ left: slot.x, top: slot.y }}
+                              className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
+                            >
+                              {isPlaced ? (
+                                <motion.div 
+                                  initial={{ scale: 0, rotate: -45, y: -20 }}
+                                  animate={{ scale: 1, rotate: [0, -5, 5, 0], y: 0 }}
+                                  className="relative group"
+                                >
+                                  <div className="text-8xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)] filter saturate-[1.2] hover:scale-110 transition-transform cursor-pointer">
+                                    {slot.icon}
+                                  </div>
+                                  {/* Success Sparkle Effect */}
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0 }}
+                                    animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+                                    transition={{ duration: 0.8 }}
+                                    className="absolute -inset-4 pointer-events-none"
+                                  >
+                                    <Sparkles className="w-full h-full text-yellow-300" />
+                                  </motion.div>
+                                </motion.div>
+                              ) : (
+                                <motion.button
+                                  whileHover={{ scale: 1.15 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  animate={
+                                    isError 
+                                      ? { x: [-5, 5, -5, 5, 0], backgroundColor: ['rgba(255,255,255,0.3)', 'rgba(239,68,68,0.4)', 'rgba(255,255,255,0.3)'] }
+                                      : isActive 
+                                        ? { scale: [1, 1.1, 1], boxShadow: ['0 0 0px rgba(255,255,255,0)', '0 0 30px rgba(255,255,255,0.8)', '0 0 0px rgba(255,255,255,0)'] } 
+                                        : {}
+                                  }
+                                  transition={isActive ? { repeat: Infinity, duration: 2 } : { duration: 0.4 }}
+                                  onClick={() => {
+                                    setActiveSlotId(slot.id);
+                                    setHasErrorInCurrentSlot(false);
+                                    playSound('click');
+                                  }}
+                                  className={`group relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 ${
+                                    isActive 
+                                      ? 'bg-white/60 border-4 border-white shadow-[0_0_40px_rgba(255,255,255,0.6)]' 
+                                      : 'bg-white/20 border-4 border-white/40 border-dashed hover:bg-white/40 hover:border-white'
+                                  }`}
+                                >
+                                  <div className={`text-center p-2 ${isActive ? 'text-yellow-700' : 'text-white/80'}`}>
+                                    <Plus className={`w-6 h-6 mx-auto mb-1 transition-transform group-hover:rotate-90 ${isActive ? 'scale-125' : ''}`} />
+                                    <span className="text-[10px] font-black uppercase leading-tight block">{slot.name}</span>
+                                  </div>
+                                  
+                                  {/* Pulsing Ring for Active Slot */}
+                                  {isActive && (
+                                    <div className="absolute -inset-2 border-2 border-white rounded-full animate-ping opacity-20" />
+                                  )}
+                                </motion.button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    {/* Slots */}
-                    {stickerScene.slots.map((slot: any) => {
-                      const isPlaced = placedStickers.includes(slot.id);
-                      const isActive = activeSlotId === slot.id;
-                      return (
-                        <div 
-                          key={slot.id}
-                          style={{ left: slot.x, top: slot.y }}
-                          className="absolute -translate-x-1/2 -translate-y-1/2"
-                        >
-                          {isPlaced ? (
-                            <motion.div 
-                              initial={{ scale: 0, rotate: -20 }}
-                              animate={{ scale: 1, rotate: 0 }}
-                              className="text-7xl drop-shadow-lg"
-                            >
-                              {slot.icon}
-                            </motion.div>
-                          ) : (
-                            <motion.button
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              animate={isActive ? { scale: [1, 1.1, 1], borderColor: ['rgba(255,255,255,0.5)', 'rgba(255,255,255,1)', 'rgba(255,255,255,0.5)'] } : {}}
-                              transition={isActive ? { repeat: Infinity, duration: 1.5 } : {}}
-                              onClick={() => {
-                                setActiveSlotId(slot.id);
-                                setHasErrorInCurrentSlot(false);
-                              }}
-                              className={`w-20 h-20 rounded-full bg-white/30 border-4 border-dashed flex items-center justify-center text-white text-xs font-black uppercase text-center p-2 transition-all ${isActive ? 'border-white bg-white/50 shadow-[0_0_20px_rgba(255,255,255,0.5)]' : 'border-white/50'}`}
-                            >
-                              {slot.name}
-                            </motion.button>
-                          )}
+                    {/* Sticker Palette */}
+                    <div className="lg:col-span-1 space-y-4">
+                      <div className="bg-white/90 backdrop-blur-xl p-6 rounded-[32px] border-4 border-white shadow-2xl h-full flex flex-col">
+                        <div className="flex items-center gap-2 mb-4 px-2">
+                          <div className="w-2 h-8 bg-yellow-400 rounded-full" />
+                          <h4 className="font-black text-gray-700 uppercase text-sm tracking-wider">Túi nhãn dán</h4>
                         </div>
-                      );
-                    })}
-                  </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          {stickerScene.slots.map((slot: any) => {
+                            const isPlaced = placedStickers.includes(slot.id);
+                            
+                            return (
+                              <motion.button
+                                key={`palette-${slot.id}`}
+                                whileHover={!isPlaced ? { scale: 1.05, y: -4 } : {}}
+                                whileTap={!isPlaced ? { scale: 0.95 } : {}}
+                                onClick={() => handleStickerPlace(slot.icon)}
+                                disabled={isPlaced || !activeSlotId}
+                                className={`relative aspect-square rounded-2xl flex items-center justify-center text-4xl shadow-sm transition-all duration-300 ${
+                                  isPlaced 
+                                    ? 'bg-gray-100 opacity-20 grayscale cursor-default' 
+                                    : !activeSlotId 
+                                      ? 'bg-gray-50 border-2 border-gray-100 opacity-40 cursor-not-allowed'
+                                      : 'bg-white border-4 border-yellow-50 hover:border-yellow-300 hover:shadow-lg cursor-pointer'
+                                }`}
+                              >
+                                {slot.icon}
+                                {!isPlaced && activeSlotId && (
+                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse" />
+                                )}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
 
-                  {/* Sticker Palette */}
-                  <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl border-4 border-white shadow-xl">
-                    <div className="flex justify-center gap-4 flex-wrap">
-                      {stickerScene.slots.map((slot: any) => {
-                        const isPlaced = placedStickers.includes(slot.id);
-                        return (
-                          <motion.button
-                            key={`palette-${slot.id}`}
-                            whileHover={!isPlaced ? { scale: 1.1, y: -5 } : {}}
-                            whileTap={!isPlaced ? { scale: 0.9 } : {}}
-                            onClick={() => handleStickerPlace(slot.icon)}
-                            disabled={isPlaced || !activeSlotId}
-                            className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg transition-all ${
-                              isPlaced 
-                                ? 'bg-gray-100 opacity-30 grayscale cursor-default' 
-                                : !activeSlotId 
-                                  ? 'bg-gray-50 border-2 border-gray-100 opacity-50 cursor-not-allowed'
-                                  : 'bg-white border-4 border-yellow-100 hover:border-yellow-400 cursor-pointer'
-                            }`}
-                          >
-                            {slot.icon}
-                          </motion.button>
-                        );
-                      })}
+                        <div className="mt-auto pt-6 text-center">
+                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 rounded-2xl border border-yellow-100">
+                            <span className="text-xs font-bold text-yellow-700">
+                              Đã dán: {placedStickers.length}/{stickerScene.slots.length}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3171,33 +5204,262 @@ const { setAssistantMsg, setShowAssistantMsg, addStars, setIsFocusMode, setActiv
                 </div>
               )}
 
+              {selectedGame === 'situation' && currentSituation && (
+                <div className="w-full max-w-2xl space-y-6">
+                  <div className="text-center space-y-2">
+                    <div className="inline-block px-4 py-1 rounded-full bg-cyan-100 text-cyan-600 text-sm font-bold uppercase tracking-wider">
+                      {currentSituation.type}
+                    </div>
+                    <h3 className="text-2xl font-black text-cyan-600">{currentSituation.title}</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Step 1: Content */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-6 rounded-[32px] border-4 transition-all duration-500 ${
+                        situationStep === 'content' ? 'bg-white border-cyan-500 shadow-xl scale-105 z-10' : 'bg-gray-50 border-transparent opacity-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold">1</div>
+                        <span className="font-bold text-cyan-600 uppercase text-xs tracking-widest">Nội dung</span>
+                      </div>
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {currentSituation.content}
+                      </p>
+                      {situationStep === 'content' && (
+                        <button 
+                          onClick={() => { setSituationStep('explanation'); playSound('click'); }}
+                          className="mt-6 w-full py-3 bg-cyan-500 text-white rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:bg-cyan-600 transition-colors"
+                        >
+                          Tiếp theo
+                        </button>
+                      )}
+                    </motion.div>
+
+                    {/* Step 2: Explanation */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className={`p-6 rounded-[32px] border-4 transition-all duration-500 ${
+                        situationStep === 'explanation' ? 'bg-white border-cyan-500 shadow-xl scale-105 z-10' : 'bg-gray-50 border-transparent opacity-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold">2</div>
+                        <span className="font-bold text-cyan-600 uppercase text-xs tracking-widest">Giải thích</span>
+                      </div>
+                      <ul className="space-y-3">
+                        {currentSituation.explanation.map((item: string, i: number) => (
+                          <li key={i} className="flex gap-2 text-gray-700">
+                            <span className="text-cyan-500">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {situationStep === 'explanation' && (
+                        <button 
+                          onClick={() => { setSituationStep('question'); playSound('click'); }}
+                          className="mt-6 w-full py-3 bg-cyan-500 text-white rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:bg-cyan-600 transition-colors"
+                        >
+                          Đã hiểu!
+                        </button>
+                      )}
+                    </motion.div>
+
+                    {/* Step 3: Question & Answer */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className={`p-6 rounded-[32px] border-4 transition-all duration-500 ${
+                        situationStep === 'question' ? 'bg-white border-cyan-500 shadow-xl scale-105 z-10' : 'bg-gray-50 border-transparent opacity-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold">3</div>
+                          <span className="font-bold text-cyan-600 uppercase text-xs tracking-widest">Câu hỏi</span>
+                        </div>
+                        <span className="text-xs font-bold text-cyan-400">
+                          {usedSituationIndices.length} / {SITUATIONS.length}
+                        </span>
+                      </div>
+                      <p className="font-bold text-gray-800 mb-6">{currentSituation.question}</p>
+                      
+                      <div className="space-y-3">
+                        {shuffledOptions.map((option: string, i: number) => (
+                          <button
+                            key={i}
+                            disabled={situationStep !== 'question' || !!situationFeedback}
+                            onClick={() => handleSituationAnswer(option)}
+                            className={`w-full p-4 rounded-2xl border-2 font-bold transition-all text-left flex items-center justify-between ${
+                              situationFeedback === 'correct' && option === currentSituation.answer
+                                ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                                : situationFeedback === 'incorrect' && option !== currentSituation.answer
+                                ? 'bg-rose-50 border-rose-200 text-rose-400'
+                                : 'bg-white border-gray-100 text-gray-700 hover:border-cyan-200 hover:bg-cyan-50'
+                            }`}
+                          >
+                            <span>{option}</span>
+                            {situationFeedback === 'correct' && option === currentSituation.answer && <CheckCircle2 className="w-5 h-5" />}
+                            {situationFeedback === 'incorrect' && option !== currentSituation.answer && <XCircle className="w-5 h-5" />}
+                          </button>
+                        ))}
+                      </div>
+
+                      {situationFeedback === 'correct' && (
+                        <motion.button
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          onClick={() => {
+                            if (usedSituationIndices.length === SITUATIONS.length) {
+                              setGameState('end');
+                            } else {
+                              generateSituation();
+                            }
+                          }}
+                          className="mt-6 w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                        >
+                          Câu tiếp theo
+                          <Plus className="w-5 h-5" />
+                        </motion.button>
+                      )}
+                    </motion.div>
+                  </div>
+                </div>
+              )}
+
               {selectedGame === 'joke' && (
                 <div className="w-full max-w-2xl space-y-8">
                   <AnimatePresence mode="wait">
-                    {currentJokes.map((joke, idx) => (
-                      <motion.div
-                        key={joke.substring(0, 20)} // Use part of joke as key for transition
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 1.05 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Card className="p-10 bg-white/90 backdrop-blur-md border-4 border-teal-100 shadow-xl hover:shadow-2xl transition-all rounded-[40px]">
-                          <div className="whitespace-pre-wrap text-gray-800 text-xl font-bold leading-relaxed text-center">
-                            {joke}
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
+                    {currentJokes.map((joke, idx) => {
+                      const lines = joke.split('\n');
+                      const rawTitle = lines[0];
+                      // Remove leading number like "1. " or "10. "
+                      const title = rawTitle.replace(/^\d+\.\s*/, '');
+                      const content = lines.slice(1).join('\n');
+                      
+                      return (
+                        <motion.div
+                          key={joke.substring(0, 20)}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                        >
+                          <Card className="p-8 md:p-12 bg-white border-4 border-teal-200 shadow-2xl rounded-[48px] relative overflow-hidden">
+                            {/* Decorative Elements */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full -mr-16 -mt-16 opacity-50" />
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-50 rounded-tr-full -ml-12 -mb-12 opacity-50" />
+                            
+                            <div className="relative z-10">
+                              <div className="flex items-center gap-5 mb-8">
+                                <div className="w-14 h-14 bg-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-teal-200 shrink-0">
+                                  <BookOpen size={28} />
+                                </div>
+                                <div>
+                                  <h3 className="text-2xl md:text-3xl font-black text-teal-600 leading-tight">{title}</h3>
+                                  <div className="h-1.5 w-20 bg-teal-200 rounded-full mt-2" />
+                                </div>
+                              </div>
+
+                              <div className="whitespace-pre-wrap text-gray-700 text-lg md:text-xl font-medium leading-relaxed text-left pl-6 border-l-4 border-teal-100">
+                                {content}
+                              </div>
+
+                              <div className="mt-8 flex justify-end">
+                                <span className="text-4xl opacity-20 select-none">✨</span>
+                              </div>
+                            </div>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                   <div className="flex justify-center pt-4">
                     <Button 
                       onClick={generateJokes} 
                       variant="accent" 
-                      className="bg-teal-500 hover:bg-teal-600 text-white px-10 py-5 rounded-3xl shadow-xl flex items-center gap-3 text-lg font-black transform hover:scale-105 active:scale-95 transition-all"
+                      className="bg-teal-500 hover:bg-teal-600 text-white px-12 py-6 rounded-3xl shadow-xl shadow-teal-100 flex items-center gap-4 text-xl font-black transform hover:scale-105 active:scale-95 transition-all group"
                     >
-                      <Sparkles size={24} /> Đọc truyện khác
+                      <Sparkles size={28} className="group-hover:rotate-12 transition-transform" /> 
+                      Đọc truyện khác
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {selectedGame === 'wordRescue' && (
+                <div className="w-full max-w-2xl space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-black text-indigo-600 uppercase tracking-widest">Cấp độ {wordRescueLevel}</h3>
+                    {wordRescueIsComplete && (
+                      <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-indigo-500 font-bold text-xl mt-2"
+                      >
+                        {wordRescueTarget.translation}
+                      </motion.p>
+                    )}
+                  </div>
+
+                  <div className="relative w-full h-[400px] bg-gradient-to-b from-indigo-50 to-blue-100 rounded-[40px] border-4 border-white shadow-xl overflow-hidden">
+                    {/* Clouds */}
+                    <div className="absolute top-10 right-20 text-4xl opacity-20">☁️</div>
+                    <div className="absolute top-40 left-10 text-3xl opacity-10">☁️</div>
+                    <div className="absolute top-20 left-1/2 text-5xl opacity-15">☁️</div>
+
+                    {/* Bird */}
+                    <motion.div
+                      style={{ bottom: `${wordRescueBirdY}%`, left: '20%' }}
+                      className="absolute text-7xl -translate-x-1/2 z-20"
+                      animate={{ 
+                        y: [0, -10, 0],
+                        rotate: [0, -5, 5, 0]
+                      }}
+                      transition={{ 
+                        duration: 2, 
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      🦜
+                    </motion.div>
+
+                    {/* Falling Letters */}
+                    {!wordRescueIsComplete && wordRescueLetters.map(letter => (
+                      <motion.button
+                        key={letter.id}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={{ left: `${letter.x}%`, top: `${letter.y}%` }}
+                        onClick={() => handleWordRescueLetterClick(letter)}
+                        className="absolute w-12 h-12 bg-white rounded-2xl shadow-lg border-2 border-indigo-100 flex items-center justify-center text-2xl font-black text-indigo-600 hover:bg-indigo-50 transition-colors z-30"
+                      >
+                        {letter.char}
+                      </motion.button>
+                    ))}
+
+                    {/* Target Word Display */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-40 bg-white/50 backdrop-blur-sm p-4 rounded-3xl border-2 border-white">
+                      {wordRescueTarget.word.split('').map((char, i) => (
+                        <div 
+                          key={i}
+                          className={`w-10 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-black transition-all ${
+                            i === wordRescueMissingIndex && !wordRescueIsComplete
+                              ? 'bg-white border-dashed border-indigo-300 text-transparent'
+                              : 'bg-indigo-500 border-indigo-600 text-white shadow-lg'
+                          }`}
+                        >
+                          {i === wordRescueMissingIndex && !wordRescueIsComplete ? '?' : char}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -3617,6 +5879,7 @@ export default function App() {
   const [stars, setStars] = useState(0);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
   const [backpackItems, setBackpackItems] = useState<BackpackItem[]>([]);
   const [isGeneratingBackpack, setIsGeneratingBackpack] = useState(false);
@@ -3660,13 +5923,15 @@ export default function App() {
         // Load from localStorage for guests
         const gSchedule = localStorage.getItem('guest_schedule');
         const gHomework = localStorage.getItem('guest_homework');
+        const gNotes = localStorage.getItem('guest_notes');
         const gSessions = localStorage.getItem('guest_studySessions');
         const gStars = localStorage.getItem('guest_stars');
         const gStats = localStorage.getItem('guest_stats');
         
-        if (gSchedule || gHomework || gSessions || gStats) {
+        if (gSchedule || gHomework || gSessions || gStats || gNotes) {
           if (gSchedule) setSchedule(JSON.parse(gSchedule));
           if (gHomework) setHomework(JSON.parse(gHomework));
+          if (gNotes) setNotes(JSON.parse(gNotes));
           if (gSessions) setStudySessions(JSON.parse(gSessions));
           if (gStars) setStars(parseInt(gStars));
           if (gStats) setStats(JSON.parse(gStats));
@@ -3685,7 +5950,7 @@ export default function App() {
     const unsubUser = onSnapshot(doc(db, 'users', userId), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setUserName(data.userName || '');
+        setUserName(data.profile?.nickname || data.profile?.fullName || data.userName || '');
         setStats(prev => ({ ...prev, ...data }));
         setStars(data.stars || 0);
       } else {
@@ -3705,6 +5970,12 @@ export default function App() {
       setHomework(items);
     }, (err) => handleFirestoreError(err, OperationType.GET, `users/${userId}/homework`));
 
+    // Notes listener
+    const unsubNotes = onSnapshot(collection(db, 'users', userId, 'notes'), (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as Note));
+      setNotes(items);
+    }, (err) => handleFirestoreError(err, OperationType.GET, `users/${userId}/notes`));
+
     // Study sessions listener
     const unsubSessions = onSnapshot(collection(db, 'users', userId, 'studySessions'), (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as StudySession));
@@ -3721,6 +5992,7 @@ export default function App() {
       unsubUser();
       unsubSchedule();
       unsubHomework();
+      unsubNotes();
       unsubSessions();
       unsubBackpack();
     };
@@ -3742,6 +6014,10 @@ export default function App() {
     try {
       await setDoc(doc(db, 'users', user.uid), {
         userName: name,
+        profile: {
+          ...stats.profile,
+          fullName: name
+        },
         stars: stars || 0,
         totalStarsEarned: stats.totalStarsEarned || 0,
         daysOnTime: stats.daysOnTime || 0,
@@ -3837,9 +6113,10 @@ export default function App() {
 
           await Promise.all(batchPromises);
 
-          // Update lastResetWeek in user profile
+          // Update lastResetWeek and reset weeklyStars in user profile
           await updateDoc(doc(db, 'users', user.uid), {
-            lastResetWeek: currentWeek
+            lastResetWeek: currentWeek,
+            weeklyStars: 0
           });
           
           setAssistantMsg("Chào tuần mới! Thời khóa biểu của bạn đã được làm mới rồi đấy. Cố gắng lên nhé! ✨");
@@ -3924,13 +6201,19 @@ export default function App() {
   // --- Guest Data Helpers ---
 
   const generateGuestSampleData = () => {
-    const { schedule: sampleSchedule, homework: sampleHomework, studySessions: sampleSessions } = getSampleData();
+    const { schedule: sampleSchedule, homework: sampleHomework, studySessions: sampleSessions, notes: sampleNotes, profile: sampleProfile } = getSampleData();
 
     setSchedule(sampleSchedule);
     setHomework(sampleHomework);
     setStudySessions(sampleSessions);
+    setNotes(sampleNotes);
     setStars(250);
-    setStats(prev => ({ ...prev, stars: 250, totalStarsEarned: 250 }));
+    setStats(prev => ({ 
+      ...prev, 
+      stars: 250, 
+      totalStarsEarned: 250,
+      profile: { ...prev.profile, ...sampleProfile }
+    }));
     
     setAssistantMsg("Đã tạo dữ liệu mẫu cho bạn rồi đó! Hãy khám phá các chức năng nhé! ✨");
     playSound('success');
@@ -3939,6 +6222,7 @@ export default function App() {
   const clearGuestData = () => {
     setSchedule([]);
     setHomework([]);
+    setNotes([]);
     setStudySessions([]);
     setStars(0);
     setStats(prev => ({
@@ -3948,11 +6232,13 @@ export default function App() {
       unlockedItems: ['default_bg', 'bird'],
       stickers: [],
       activeWallpaper: 'default_bg',
-      activeCharacter: 'bird'
+      activeCharacter: 'bird',
+      profile: {}
     }));
     
     localStorage.removeItem('guest_schedule');
     localStorage.removeItem('guest_homework');
+    localStorage.removeItem('guest_notes');
     localStorage.removeItem('guest_studySessions');
     localStorage.removeItem('guest_stars');
     localStorage.removeItem('guest_stats');
@@ -3966,11 +6252,12 @@ export default function App() {
     if (!user && isAuthReady) {
       localStorage.setItem('guest_schedule', JSON.stringify(schedule));
       localStorage.setItem('guest_homework', JSON.stringify(homework));
+      localStorage.setItem('guest_notes', JSON.stringify(notes));
       localStorage.setItem('guest_studySessions', JSON.stringify(studySessions));
       localStorage.setItem('guest_stars', stars.toString());
       localStorage.setItem('guest_stats', JSON.stringify(stats));
     }
-  }, [user, isAuthReady, schedule, homework, studySessions, stars, stats]);
+  }, [user, isAuthReady, schedule, homework, notes, studySessions, stars, stats]);
 
   useEffect(() => {
     if (!user) return;
@@ -3995,8 +6282,9 @@ export default function App() {
   const addStars = async (amount: number, reason: string) => {
     const newStars = stars + amount;
     const newTotalStars = (stats.totalStarsEarned || 0) + amount;
+    const newWeeklyStars = (stats.weeklyStars || 0) + amount;
     setStars(newStars);
-    setStats(prev => ({ ...prev, stars: newStars, totalStarsEarned: newTotalStars }));
+    setStats(prev => ({ ...prev, stars: newStars, totalStarsEarned: newTotalStars, weeklyStars: newWeeklyStars }));
     setAssistantMsg(`Giỏi quá! +${amount} sao vì ${reason}!`);
     setShowAssistantMsg(true);
     playSound('success');
@@ -4011,7 +6299,8 @@ export default function App() {
       try {
         await updateDoc(doc(db, 'users', user.uid), {
           stars: newStars,
-          totalStarsEarned: newTotalStars
+          totalStarsEarned: newTotalStars,
+          weeklyStars: newWeeklyStars
         });
       } catch (err) {
         console.error("Error saving stars:", err);
@@ -4113,6 +6402,45 @@ export default function App() {
       }
     } else {
       setHomework(prev => prev.filter(h => h.id !== id));
+      playSound('delete');
+    }
+  };
+
+  const addNote = async (item: Omit<Note, 'id'>) => {
+    if (user) {
+      try {
+        await addDoc(collection(db, 'users', user.uid, 'notes'), item);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/notes`);
+      }
+    } else {
+      const newItem = { ...item, id: Date.now().toString() };
+      setNotes(prev => [...prev, newItem]);
+    }
+  };
+
+  const updateNote = async (id: string, updates: Partial<Note>) => {
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'notes', id), updates);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}/notes/${id}`);
+      }
+    } else {
+      setNotes(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+    }
+  };
+
+  const deleteNote = async (id: string) => {
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'users', user.uid, 'notes', id));
+        playSound('delete');
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/notes/${id}`);
+      }
+    } else {
+      setNotes(prev => prev.filter(n => n.id !== id));
       playSound('delete');
     }
   };
@@ -4306,6 +6634,29 @@ export default function App() {
     }
   }, [pendingHomework.length, homework.length]);
 
+  // Assistant logic based on notes
+  useEffect(() => {
+    if (activeTab === 'notes') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+      const todayNotes = notes.filter((n: Note) => n.reminderDate === todayStr && !n.isCompleted);
+      const tomorrowNotes = notes.filter((n: Note) => n.reminderDate === tomorrowStr && !n.isCompleted);
+
+      if (todayNotes.length > 0) {
+        setTimeout(() => {
+          setAssistantMsg(`Bạn có ${todayNotes.length} ghi chú cần làm hôm nay đó!`);
+        }, 1000);
+      } else if (tomorrowNotes.length > 0) {
+        setTimeout(() => {
+          setAssistantMsg(`Ngày mai bạn có ${tomorrowNotes.length} ghi chú cần nhớ nhé!`);
+        }, 1000);
+      }
+    }
+  }, [notes, activeTab]);
+
   const generateBackpackList = async () => {
     if (tomorrowSchedule.length === 0) {
       setAssistantMsg("Ngày mai không có tiết học nào, bạn không cần chuẩn bị cặp đâu!");
@@ -4439,7 +6790,20 @@ export default function App() {
   // --- Views ---
 
 
-  const state = { user, stars, schedule, homework, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay };
+  const updateProfile = async (profileData: any) => {
+    setStats(prev => ({ ...prev, profile: profileData }));
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          profile: profileData
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
+      }
+    }
+  };
+
+  const state = { user, stars, schedule, homework, notes, studySessions, backpackItems, isGeneratingBackpack, isFocusMode, focusTime, timerTotalTime, isTimerActive, timerMode, currentSessionId, studyJourneyProgress, stats, activeTab, selectedDay };
   const actions = { 
     setAssistantMsg, 
     setShowAssistantMsg, 
@@ -4465,27 +6829,35 @@ export default function App() {
     addHomework,
     updateHomeworkStatus,
     deleteHomework,
+    addNote,
+    updateNote,
+    deleteNote,
     addStudySession,
     deleteStudySession,
     updateStudySessionStatus,
     updateHighScore,
-    setShowCalculator
+    setShowCalculator,
+    updateProfile
   };
   return (
     <div className="min-h-screen font-sans text-gray-800 pb-20 md:pb-0 md:pl-24 pt-16 md:pt-20 transition-colors duration-500" style={{ backgroundColor: activeBgColor }}>
       {/* Top Bar */}
       <header className="fixed top-0 left-0 right-0 md:left-24 h-16 md:h-20 bg-white/80 backdrop-blur-md z-30 flex items-center justify-between px-6 border-b-2 border-blue-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-lg text-white">
-            {activeCharIcon}
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-lg text-white overflow-hidden">
+            {stats.profile?.avatar ? (
+              <img src={stats.profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              activeCharIcon
+            )}
           </div>
           <div>
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Chào mừng bạn nhỏ</div>
             <div className="text-sm md:text-lg font-black text-blue-900 leading-none flex items-center gap-2">
-              {user ? (userName || 'Bạn nhỏ') : 'Khách'}
+              {user ? (stats.profile?.nickname || stats.profile?.fullName || userName || 'Bạn nhỏ') : 'Khách'}
               {user && (
                 <button 
-                  onClick={() => setShowNameInput(true)}
+                  onClick={() => setActiveTab('profile')}
                   className="p-1 hover:bg-blue-50 rounded-lg transition-colors"
                 >
                   <Edit2 size={12} className="text-blue-400" />
@@ -4522,9 +6894,11 @@ export default function App() {
           { id: 'schedule', icon: Calendar, label: 'Thời khóa biểu', color: 'text-blue-500' },
           { id: 'homework', icon: BookText, label: 'Bài tập', color: 'text-green-500' },
           { id: 'timetable', icon: Clock, label: 'Thời gian biểu', color: 'text-yellow-500' },
+          { id: 'notes', icon: Edit2, label: 'Ghi chú', color: 'text-indigo-500' },
           { id: 'achievements', icon: Trophy, label: 'Thành tích', color: 'text-purple-500' },
           { id: 'shop', icon: ShoppingBag, label: 'Cửa hàng', color: 'text-orange-500' },
           { id: 'minigame', icon: Gamepad2, label: 'Trò chơi', color: 'text-pink-500' },
+          { id: 'profile', icon: User, label: 'Cá nhân', color: 'text-teal-500' },
         ].map(item => (
           <button
             key={item.id}
@@ -4552,9 +6926,11 @@ export default function App() {
             {activeTab === 'schedule' && <ScheduleView state={state} actions={actions} />}
             {activeTab === 'homework' && <HomeworkView state={state} actions={actions} />}
             {activeTab === 'timetable' && <TimeTableView state={state} actions={actions} />}
+            {activeTab === 'notes' && <NotesView state={state} actions={actions} />}
             {activeTab === 'achievements' && <AchievementsView state={state} actions={actions} />}
             {activeTab === 'shop' && <ShopView state={state} actions={actions} />}
             {activeTab === 'minigame' && <MiniGameView state={state} actions={actions} />}
+            {activeTab === 'profile' && <ProfileView state={state} actions={actions} />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -4692,7 +7068,7 @@ export default function App() {
                     className="w-full px-6 py-4 rounded-2xl border-4 border-blue-50 focus:border-blue-400 outline-none text-lg font-bold text-center transition-all"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && userName.trim()) {
-                        setShowNameInput(false);
+                        saveUserName(userName.trim());
                       }
                     }}
                   />

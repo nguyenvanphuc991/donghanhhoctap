@@ -54,6 +54,19 @@ service cloud.firestore {
     //   - subject: string (required)
     //   - prepared: bool (required)
     //
+    // Sub-Collection: users/{userId}/notes
+    // Document ID: {noteId}
+    // Fields:
+    //   - title: string (required)
+    //   - content: string (required)
+    //   - color: string (required)
+    //   - isPinned: bool (required)
+    //   - isCompleted: bool (required)
+    //   - createdAt: number (required)
+    //   - reminderDate: string (optional)
+    //   - tags: list (optional)
+    //   - files: list (optional)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -79,17 +92,21 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      return hasRequiredFields(['userName', 'stars', 'daysOnTime', 'homeworkCompleted', 'badges', 'unlockedItems', 'activeWallpaper', 'activeCharacter']) &&
+      return hasRequiredFields(['userName', 'stars']) &&
              data.userName is string && data.userName.size() > 0 && data.userName.size() < 100 &&
              data.stars is number &&
-             data.daysOnTime is number &&
-             data.homeworkCompleted is number &&
-             data.badges is list &&
-             data.unlockedItems is list &&
-             data.activeWallpaper is string &&
-             data.activeCharacter is string &&
+             (!('daysOnTime' in data) || data.daysOnTime is number) &&
+             (!('homeworkCompleted' in data) || data.homeworkCompleted is number) &&
+             (!('badges' in data) || data.badges is list) &&
+             (!('unlockedItems' in data) || data.unlockedItems is list) &&
+             (!('activeWallpaper' in data) || data.activeWallpaper is string) &&
+             (!('activeCharacter' in data) || data.activeCharacter is string) &&
              (!('stickers' in data) || data.stickers is list || data.stickers == null) &&
-             (!('lastDailyRewardDate' in data) || data.lastDailyRewardDate is string || data.lastDailyRewardDate == null);
+             (!('lastDailyRewardDate' in data) || data.lastDailyRewardDate is string || data.lastDailyRewardDate == null) &&
+             (!('profile' in data) || data.profile is map || data.profile == null) &&
+             (!('weeklyStars' in data) || data.weeklyStars is number) &&
+             (!('totalStarsEarned' in data) || data.totalStarsEarned is number) &&
+             (!('lastResetWeek' in data) || data.lastResetWeek is string);
     }
 
     function isValidScheduleItem(data) {
@@ -124,11 +141,29 @@ service cloud.firestore {
              data.prepared is bool;
     }
 
+    function isValidNote(data) {
+      return hasRequiredFields(['title', 'content', 'color', 'isPinned', 'isCompleted', 'createdAt']) &&
+             data.title is string && data.title.size() < 500 &&
+             data.content is string && data.content.size() < 5000 &&
+             data.color is string &&
+             data.isPinned is bool &&
+             data.isCompleted is bool &&
+             data.createdAt is number &&
+             (!('icon' in data) || data.icon is string || data.icon == null) &&
+             (!('reminderDate' in data) || data.reminderDate is string || data.reminderDate == null) &&
+             (!('reminderTime' in data) || data.reminderTime is string || data.reminderTime == null) &&
+             (!('reminderRepeat' in data) || data.reminderRepeat is string || data.reminderRepeat == null) &&
+             (!('reminderDays' in data) || data.reminderDays is list || data.reminderDays == null) &&
+             (!('tags' in data) || data.tags is list || data.tags == null) &&
+             (!('files' in data) || data.files is list || data.files == null) &&
+             (!('checklist' in data) || data.checklist is list || data.checklist == null);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isOwner(userId) && isValidUser(request.resource.data);
 
@@ -157,6 +192,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidBackpackItem(request.resource.data);
         allow update: if isOwner(userId) && isValidBackpackItem(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /notes/{noteId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidNote(request.resource.data);
+        allow update: if isOwner(userId) && isValidNote(request.resource.data);
         allow delete: if isOwner(userId);
       }
     }

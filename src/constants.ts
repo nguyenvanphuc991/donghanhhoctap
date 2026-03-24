@@ -37,7 +37,9 @@ export const SHOP_ITEMS = {
     { id: 'space_bg', name: 'Vũ trụ', price: 200, color: '#F5F3FF' },
     { id: 'ocean_bg', name: 'Đại dương', price: 250, color: '#E0F2FE' },
     { id: 'candy_bg', name: 'Kẹo ngọt', price: 300, color: '#FDF2F8' },
+    { id: 'mountain_bg', name: 'Núi non', price: 350, color: '#F8FAFC' },
     { id: 'midnight_bg', name: 'Đêm khuya', price: 400, color: '#1E293B' },
+    { id: 'desert_bg', name: 'Sa mạc', price: 450, color: '#FEF3C7' },
   ],
   characters: [
     { id: 'bird', name: 'Chim Xanh', price: 0, icon: '🐦' },
@@ -48,12 +50,19 @@ export const SHOP_ITEMS = {
     { id: 'unicorn', name: 'Kỳ lân', price: 300, icon: '🦄' },
     { id: 'robot', name: 'Người máy', price: 400, icon: '🤖' },
     { id: 'alien', name: 'Người ngoài hành tinh', price: 500, icon: '👽' },
+    { id: 'tiger', name: 'Hổ Vằn', price: 600, icon: '🐯' },
+    { id: 'fox', name: 'Cáo Cáo', price: 700, icon: '🦊' },
   ],
   stickers: [
     { id: 'sticker_heart', name: 'Tim yêu', price: 20, icon: '❤️' },
     { id: 'sticker_fire', name: 'Lửa cháy', price: 20, icon: '🔥' },
     { id: 'sticker_rocket', name: 'Tên lửa', price: 30, icon: '🚀' },
+    { id: 'sticker_cloud', name: 'Đám mây', price: 30, icon: '☁️' },
+    { id: 'sticker_star', name: 'Ngôi sao', price: 40, icon: '⭐' },
+    { id: 'sticker_moon', name: 'Mặt trăng', price: 40, icon: '🌙' },
+    { id: 'sticker_sun', name: 'Mặt trời', price: 40, icon: '☀️' },
     { id: 'sticker_crown', name: 'Vương miện', price: 50, icon: '👑' },
+    { id: 'sticker_rainbow', name: 'Cầu vồng', price: 80, icon: '🌈' },
     { id: 'sticker_diamond', name: 'Kim cương', price: 100, icon: '💎' },
   ],
   supplies: [
@@ -203,6 +212,453 @@ export const WORD_LIST = [
   { word: 'TINHOC', hint: 'Học cách dùng máy tính' },
 ];
 
+export const WORD_RESCUE_LIST = [
+  { word: 'Father', translation: 'Ba' },
+  { word: 'Mother', translation: 'Mẹ' },
+  { word: 'Brother', translation: 'Anh/Em trai' },
+  { word: 'Sister', translation: 'Chị/Em gái' },
+  { word: 'Friend', translation: 'Bạn' },
+  { word: 'Teacher', translation: 'Thầy/Cô' },
+  { word: 'Student', translation: 'Học sinh' },
+  { word: 'Baby', translation: 'Em bé' },
+  { word: 'School', translation: 'Trường' },
+  { word: 'Class', translation: 'Lớp' },
+  { word: 'Table', translation: 'Bàn' },
+  { word: 'Chair', translation: 'Ghế' },
+  { word: 'Book', translation: 'Sách' },
+  { word: 'Notebook', translation: 'Vở' },
+  { word: 'Pen', translation: 'Bút mực' },
+  { word: 'Pencil', translation: 'Bút chì' },
+  { word: 'Tree', translation: 'Cây' },
+  { word: 'Flower', translation: 'Hoa' },
+  { word: 'Leaf', translation: 'Lá' },
+  { word: 'Grass', translation: 'Cỏ' },
+  { word: 'Mountain', translation: 'Núi' },
+  { word: 'River', translation: 'Sông' },
+  { word: 'Sea', translation: 'Biển' },
+  { word: 'Sky', translation: 'Bầu trời' },
+  { word: 'Dog', translation: 'Chó' },
+  { word: 'Cat', translation: 'Mèo' },
+  { word: 'Chicken', translation: 'Gà' },
+  { word: 'Duck', translation: 'Vịt' },
+  { word: 'Fish', translation: 'Cá' },
+  { word: 'Bird', translation: 'Chim' },
+  { word: 'Buffalo', translation: 'Trâu' },
+  { word: 'Cow', translation: 'Bò' },
+  { word: 'Rice', translation: 'Cơm' },
+  { word: 'Water', translation: 'Nước' },
+  { word: 'Milk', translation: 'Sữa' },
+  { word: 'Cake', translation: 'Bánh' },
+  { word: 'Candy', translation: 'Kẹo' },
+  { word: 'Fruit', translation: 'Trái cây' },
+  { word: 'Apple', translation: 'Táo' },
+  { word: 'Banana', translation: 'Chuối' },
+  { word: 'Eat', translation: 'Ăn' },
+  { word: 'Drink', translation: 'Uống' },
+  { word: 'Go', translation: 'Đi' },
+  { word: 'Run', translation: 'Chạy' },
+  { word: 'Jump', translation: 'Nhảy' },
+  { word: 'Study', translation: 'Học' },
+  { word: 'Beautiful', translation: 'Đẹp' },
+  { word: 'Good', translation: 'Ngoan/Tốt' },
+  { word: 'Happy', translation: 'Vui' },
+  { word: 'Sad', translation: 'Buồn' },
+];
+
+export const SITUATIONS = [
+  {
+    id: 1,
+    type: 'Đoạn ngắn',
+    title: 'Học đúng giờ',
+    content: 'Mỗi ngày, Minh đều ngồi vào bàn học lúc 7 giờ tối. Dù hôm đó nhiều hay ít bài, Minh vẫn giữ thói quen này. Nhờ vậy, Minh không bao giờ bị quên bài và luôn làm bài đầy đủ.',
+    explanation: [
+      'Học đúng giờ giúp tạo thói quen',
+      'Não bộ quen lịch → học hiệu quả hơn'
+    ],
+    question: 'Minh giỏi hơn vì điều gì?',
+    options: ['Học đúng giờ', 'Minh lười biếng'],
+    answer: 'Học đúng giờ'
+  },
+  {
+    id: 2,
+    type: 'Hội thoại',
+    title: 'Học tập trung',
+    content: 'Lan: Sao cậu học lâu vậy mà vẫn chưa xong bài?\nNam: Tớ vừa học vừa xem tivi.\nLan: Tớ tắt hết điện thoại và làm bài 30 phút là xong rồi!',
+    explanation: [
+      'Học tập trung giúp tiết kiệm thời gian',
+      'Tránh xao nhãng (tivi, điện thoại)'
+    ],
+    question: 'Chọn ai học đúng:',
+    options: ['Lan', 'Nam'],
+    answer: 'Lan'
+  },
+  {
+    id: 3,
+    type: 'Tình huống',
+    title: 'Làm bài trước khi chơi',
+    content: 'Tùng đi học về, thấy bạn rủ đi đá bóng. Tùng chưa làm bài tập.',
+    explanation: [
+      'Ưu tiên việc quan trọng trước',
+      'Học xong chơi sẽ thoải mái hơn'
+    ],
+    question: 'Tùng nên làm gì?',
+    options: ['Đi đá bóng trước', 'Làm bài tập trước'],
+    answer: 'Làm bài tập trước'
+  },
+  {
+    id: 4,
+    type: 'Tục ngữ',
+    title: 'Học chăm chỉ',
+    content: 'Có công mài sắt, có ngày nên kim',
+    explanation: [
+      'Kiên trì sẽ thành công',
+      'Học mỗi ngày một ít chắc chắn tiến bộ'
+    ],
+    question: 'Câu tục ngữ khuyên ta điều gì?',
+    options: ['Kiên trì', 'Mài cây kim'],
+    answer: 'Kiên trì'
+  },
+  {
+    id: 5,
+    type: 'Đoạn ngắn',
+    title: 'Học từng phần',
+    content: 'Hà không học một lần tất cả bài. Hà chia nhỏ bài ra: học từng phần, mỗi phần 15 phút. Nhờ vậy, Hà nhớ bài lâu hơn.',
+    explanation: [
+      'Học chia nhỏ giúp dễ nhớ',
+      'Tránh quá tải'
+    ],
+    question: 'Chọn cách học tốt:',
+    options: ['Học dồn', 'Học từng phần'],
+    answer: 'Học từng phần'
+  },
+  {
+    id: 6,
+    type: 'Hội thoại',
+    title: 'Hỏi khi không hiểu',
+    content: 'Bình: Bài này khó quá!\nAn: Cậu hỏi cô giáo chưa?\nBình: Chưa…\nAn: Nếu không hỏi, cậu sẽ không hiểu đâu!',
+    explanation: [
+      'Không hiểu phải hỏi',
+      'Hỏi giúp học nhanh hơn'
+    ],
+    question: 'Khi không hiểu bài hoặc một vấn đề gì khó chúng ta cần làm gì?',
+    options: ['Hỏi người lớn', 'Không cần hỏi từ từ sẽ biết'],
+    answer: 'Hỏi người lớn'
+  },
+  {
+    id: 7,
+    type: 'Tình huống',
+    title: 'Ôn lại bài',
+    content: 'Mai học bài xong và đi ngủ ngay, không xem lại.',
+    explanation: [
+      'Ôn lại giúp nhớ lâu',
+      'Củng cố kiến thức'
+    ],
+    question: 'Sau khi học bài xong, Mai nên làm gì trước khi ngủ?',
+    options: ['Xem lại bài cũ', 'Đi ngủ luôn'],
+    answer: 'Xem lại bài cũ'
+  },
+  {
+    id: 8,
+    type: 'Thành ngữ',
+    title: 'Học đi đôi với hành',
+    content: 'Học đi đôi với hành',
+    explanation: [
+      'Học phải thực hành',
+      'Làm bài tập giúp hiểu sâu'
+    ],
+    question: 'Ý nghĩa của câu thành ngữ là gì?',
+    options: ['Học xong còn phải làm bài', 'Học là phải có hành lá'],
+    answer: 'Học xong còn phải làm bài'
+  },
+  {
+    id: 9,
+    type: 'Đoạn ngắn',
+    title: 'Giữ góc học tập gọn gàng',
+    content: 'Bàn học của An luôn sạch sẽ, sách vở gọn gàng. Khi học, An dễ tìm đồ và không bị mất tập trung.',
+    explanation: [
+      'Không gian gọn gàng → dễ tập trung',
+      'Tiết kiệm thời gian'
+    ],
+    question: 'Cần làm gì để góc học tập gọn gàng?',
+    options: ['Thường xuyên dọn dẹp sắp xếp đồ đạc', 'Bỏ đồ dùng bừa bộn'],
+    answer: 'Thường xuyên dọn dẹp sắp xếp đồ đạc'
+  },
+  {
+    id: 10,
+    type: 'Tình huống',
+    title: 'Nghỉ ngơi hợp lý',
+    content: 'Hùng học liên tục 2 tiếng mà không nghỉ.',
+    explanation: [
+      'Học 25–30 phút nên nghỉ',
+      'Tránh mệt mỏi'
+    ],
+    question: 'Chọn thời gian học đúng:',
+    options: ['30 phút học + 5 phút nghỉ', 'Học 2 Tiếng rồi nghỉ'],
+    answer: '30 phút học + 5 phút nghỉ'
+  },
+  {
+    id: 11,
+    type: 'Đoạn ngắn',
+    title: 'Chuẩn bị bài trước khi đến lớp',
+    content: 'Trước khi đến lớp, Vy luôn xem lại bài học hôm trước và đọc trước bài mới. Khi lên lớp, Vy hiểu bài nhanh hơn các bạn.',
+    explanation: [
+      'Chuẩn bị trước giúp tiếp thu nhanh',
+      'Không bị bỡ ngỡ khi học bài mới'
+    ],
+    question: 'Vy học tốt vì điều gì?',
+    options: ['Chuẩn bị bài thật tốt', 'Đến trường thật sớm'],
+    answer: 'Chuẩn bị bài thật tốt'
+  },
+  {
+    id: 12,
+    type: 'Hội thoại',
+    title: 'Không học thuộc lòng máy móc',
+    content: 'Nam: Tớ học thuộc hết rồi nhưng vẫn không làm được bài.\nHà: Cậu có hiểu bài không?\nNam: Không…\nHà: Phải hiểu thì mới làm được!',
+    explanation: [
+      'Học phải hiểu, không chỉ thuộc',
+      'Hiểu giúp áp dụng được'
+    ],
+    question: 'Học thuộc lòng mà vẫn chưa hiểu bài thì phải làm sao?',
+    options: ['Hỏi bạn bè, thầy cô', 'Tự học tiếp'],
+    answer: 'Hỏi bạn bè, thầy cô'
+  },
+  {
+    id: 13,
+    type: 'Tình huống',
+    title: 'Không trì hoãn',
+    content: 'Lan nghĩ: “Để mai làm bài cũng được.” Nhưng ngày mai lại có thêm nhiều bài mới.',
+    explanation: [
+      'Trì hoãn làm việc khiến bài dồn lại',
+      'Nên làm ngay khi có thể'
+    ],
+    question: 'Lan nên làm gì?',
+    options: ['Để ngày mai làm tiếp', 'Việc của hôm nay thì phải làm hết'],
+    answer: 'Việc của hôm nay thì phải làm hết'
+  },
+  {
+    id: 14,
+    type: 'Câu nói',
+    title: 'Siêng năng học tập',
+    content: 'Siêng năng là chìa khóa của thành công',
+    explanation: [
+      'Chăm chỉ giúp tiến bộ mỗi ngày',
+      'Không cần quá giỏi, chỉ cần cố gắng'
+    ],
+    question: 'Điền từ còn thiếu: “Siêng năng là … của thành công”',
+    options: ['Bạn', 'Chìa khóa'],
+    answer: 'Chìa khóa'
+  },
+  {
+    id: 15,
+    type: 'Đoạn ngắn',
+    title: 'Học bằng cách ghi chép',
+    content: 'Khi học, Tuấn luôn ghi lại những ý chính vào vở. Nhờ vậy, Tuấn dễ nhớ bài và ôn tập nhanh hơn.',
+    explanation: [
+      'Ghi chép giúp nhớ lâu',
+      'Tạo tài liệu để ôn lại'
+    ],
+    question: 'Chọn lợi ích của ghi chép:',
+    options: ['Luyện viết chữ nhanh', 'Ghi nhớ bài tốt hơn'],
+    answer: 'Ghi nhớ bài tốt hơn'
+  },
+  {
+    id: 16,
+    type: 'Hội thoại',
+    title: 'Học nhóm hiệu quả',
+    content: 'Mai: Bài này khó quá!\nLinh: Tụi mình cùng học nhé!\nMai: Ừ, mỗi người giải một phần rồi cùng kiểm tra.',
+    explanation: [
+      'Học nhóm giúp hiểu nhanh hơn',
+      'Có thể hỗ trợ nhau'
+    ],
+    question: 'Chọn lợi ích của học nhóm:',
+    options: ['Có người trò chuyện vui vẻ', 'Giúp nhau cùng tiến bộ'],
+    answer: 'Giúp nhau cùng tiến bộ'
+  },
+  {
+    id: 17,
+    type: 'Tình huống',
+    title: 'Tự giác học tập',
+    content: 'Không có ai nhắc, nhưng Hùng vẫn tự ngồi vào bàn học.',
+    explanation: [
+      'Tự giác là thói quen tốt',
+      'Không cần nhắc vẫn học'
+    ],
+    question: 'Hùng là học sinh tự giác, đúng hay sai?',
+    options: ['Đúng', 'Sai'],
+    answer: 'Đúng'
+  },
+  {
+    id: 18,
+    type: 'Đoạn ngắn',
+    title: 'Đọc sách mỗi ngày',
+    content: 'Mỗi tối trước khi ngủ, An thường đọc 10 trang sách. Việc này giúp An mở rộng vốn từ và hiểu biết thêm nhiều điều thú vị.',
+    explanation: [
+      'Đọc sách giúp mở mang kiến thức',
+      'Rèn luyện khả năng ngôn ngữ'
+    ],
+    question: 'Đọc sách giúp chúng ta điều gì?',
+    options: ['Mở rộng vốn từ', 'Mau buồn ngủ'],
+    answer: 'Mở rộng vốn từ'
+  },
+  {
+    id: 19,
+    type: 'Đoạn ngắn',
+    title: 'Đặt câu hỏi khi học',
+    content: 'Khi học bài, nếu có điều chưa hiểu, Hoa thường tự đặt câu hỏi và tìm câu trả lời. Nhờ vậy, Hoa hiểu bài sâu hơn.',
+    explanation: [
+      'Đặt câu hỏi giúp suy nghĩ',
+      'Hiểu sâu kiến thức'
+    ],
+    question: 'Chọn cách tự học tốt hơn:',
+    options: ['Tìm cách tự đặt vấn đề và trả lời', 'Cứ học thuộc lòng là được'],
+    answer: 'Tìm cách tự đặt vấn đề và trả lời'
+  },
+  {
+    id: 20,
+    type: 'Tình huống',
+    title: 'Giữ sức khỏe khi học',
+    content: 'Nam học bài trong phòng tối và ngồi sai tư thế.',
+    explanation: [
+      'Cần ngồi đúng tư thế',
+      'Học nơi đủ ánh sáng',
+      'Bảo vệ mắt và sức khỏe'
+    ],
+    question: 'Chọn tư thế ngồi đúng:',
+    options: ['Ngồi đúng tư thế, đủ sáng', 'Ngồi đâu cũng được'],
+    answer: 'Ngồi đúng tư thế, đủ sáng'
+  },
+  {
+    id: 21,
+    type: 'Tình huống',
+    title: 'Lập kế hoạch học tập',
+    content: 'Nam có rất nhiều bài tập nhưng không biết làm bài nào trước, nên làm rất lâu mà chưa xong.',
+    explanation: [
+      'Lập kế hoạch giúp làm việc có thứ tự',
+      'Tránh bị rối và tiết kiệm thời gian'
+    ],
+    question: 'Nam nên làm gì để học tốt hơn?',
+    options: ['Làm bài ngẫu nhiên', 'Lập kế hoạch học tập'],
+    answer: 'Lập kế hoạch học tập'
+  },
+  {
+    id: 22,
+    type: 'Tình huống',
+    title: 'Học vào thời gian phù hợp',
+    content: 'Do xem ti vi trước trong thời gian lâu, đến khi ngồi vào bàn học Lan thường học bài khi rất mệt và buồn ngủ.',
+    explanation: [
+      'Học khi tỉnh táo sẽ hiệu quả hơn',
+      'Tránh học lúc quá mệt'
+    ],
+    question: 'Khi nào nên học hiệu quả nhất?',
+    options: ['Khi tỉnh táo', 'Khi buồn ngủ'],
+    answer: 'Khi tỉnh táo'
+  },
+  {
+    id: 23,
+    type: 'Tình huống',
+    title: 'Đọc kỹ đề bài',
+    content: 'Cô giáo phát đề kiểm tra ra, Bình làm sai bài toán vì đọc nhanh và hiểu sai đề.',
+    explanation: [
+      'Đọc kỹ giúp tránh sai sót',
+      'Hiểu đúng yêu cầu bài'
+    ],
+    question: 'Bình nên làm gì trước khi làm bài?',
+    options: ['Làm ngay', 'Đọc kỹ đề'],
+    answer: 'Đọc kỹ đề'
+  },
+  {
+    id: 24,
+    type: 'Tình huống',
+    title: 'Giữ bàn học gọn gàng',
+    content: 'Bàn học của An rất bừa bộn, sách để chung với tập, bút viết để lộn xộn, học xong thì không dọn ngay. mỗi lần tìm dụng cụ học tập mất nhiều thời gian.',
+    explanation: [
+      'Gọn gàng giúp tập trung',
+      'Tiết kiệm thời gian'
+    ],
+    question: 'Bàn học nên như thế nào?',
+    options: ['Gọn gàng', 'Không cần dọn'],
+    answer: 'Gọn gàng'
+  },
+  {
+    id: 25,
+    type: 'Tình huống',
+    title: 'Không phụ thuộc vào người khác',
+    content: 'Mỗi lần có bài tập, Minh đều chờ bạn làm rồi chép lại. Minh nghĩ rằng có nộp bài cho cô là được rồi cần gì phải làm.',
+    explanation: [
+      'Tự làm giúp hiểu bài',
+      'Không nên phụ thuộc'
+    ],
+    question: 'Minh nên làm gì?',
+    options: ['Chép bài', 'Tự làm bài'],
+    answer: 'Tự làm bài'
+  },
+  {
+    id: 26,
+    type: 'Tình huống',
+    title: 'Học từ sai lầm',
+    content: 'Hoa làm sai bài nhưng không xem lại lỗi sai. Nên việc học cứ luôn bị điểm thấp.',
+    explanation: [
+      'Xem lại lỗi giúp tiến bộ',
+      'Sai là cơ hội học'
+    ],
+    question: 'Khi làm sai nên làm gì?',
+    options: ['Xem lại lỗi', 'Không làm nữa'],
+    answer: 'Xem lại lỗi'
+  },
+  {
+    id: 27,
+    type: 'Tình huống',
+    title: 'Giữ tinh thần vui vẻ khi học',
+    content: 'Tuấn luôn cảm thấy chán nản khi học bài. Các bài tập thầy cô cho đều không muốn làm.',
+    explanation: [
+      'Tâm trạng tốt giúp học tốt hơn',
+      'Có thể kết hợp học và chơi'
+    ],
+    question: 'Khi học nên có tâm trạng như thế nào?',
+    options: ['Vui vẻ', 'Buồn chán'],
+    answer: 'Vui vẻ'
+  },
+  {
+    id: 28,
+    type: 'Tình huống',
+    title: 'Học đúng tư thế',
+    content: 'Lan nằm trên giường để học bài. Lan nghĩ rằng như vậy thoải mái hơn. Nhưng tối đó Lan bị đau lưng.',
+    explanation: [
+      'Ngồi đúng giúp tập trung',
+      'Bảo vệ sức khỏe'
+    ],
+    question: 'Tư thế học đúng là gì?',
+    options: ['Nằm học', 'Ngồi thẳng'],
+    answer: 'Ngồi thẳng'
+  },
+  {
+    id: 29,
+    type: 'Tình huống',
+    title: 'Tự kiểm tra bài sau khi làm',
+    content: 'Hùng làm xong bài nhưng không kiểm tra lại. Kết quả Hùng bị sai 2 câu do chọn đáp án bị nhầm.',
+    explanation: [
+      'Kiểm tra giúp phát hiện lỗi',
+      'Nâng cao điểm số'
+    ],
+    question: 'Sau khi làm bài nên làm gì?',
+    options: ['Nộp ngay', 'Kiểm tra lại'],
+    answer: 'Kiểm tra lại'
+  },
+  {
+    id: 30,
+    type: 'Tình huống',
+    title: 'Không học quá sức',
+    content: 'Mai học liên tục nhiều giờ mà không nghỉ. Đến tối Mai khó ngủ và sáng dậy không đủ tỉnh táo để đi học.',
+    explanation: [
+      'Học quá lâu dễ mệt',
+      'Cần nghỉ ngơi hợp lý'
+    ],
+    question: 'Cách học tốt là gì?',
+    options: ['Học và nghỉ hợp lý', 'Không học'],
+    answer: 'Học và nghỉ hợp lý'
+  }
+];
+
 export const getSampleData = () => {
   const now = new Date();
   const day = now.getDay(); // 0 (Sun) to 6 (Sat)
@@ -306,5 +762,90 @@ export const getSampleData = () => {
     { id: 'ss16', day: 5, startTime: '07:30', endTime: '08:30', activity: 'Giải trí', subject: 'Khác', status: 'upcoming' },
   ];
 
-  return { schedule, homework, studySessions };
+  const notes = [
+    {
+      id: 'n1',
+      title: 'Đi chợ giúp mẹ',
+      content: 'Mẹ dặn đi chợ giúp mẹ mua đồ',
+      checklist: [
+        { id: 'c1', text: 'Cá', isCompleted: false },
+        { id: 'c2', text: 'Rau cải xanh', isCompleted: false },
+        { id: 'c3', text: 'thịt heo', isCompleted: false },
+        { id: 'c4', text: 'Nước mắm', isCompleted: false },
+        { id: 'c5', text: 'Tương ớt', isCompleted: false }
+      ],
+      createdAt: Date.now(),
+      reminderDate: getDayDate(0),
+      reminderTime: '08:00',
+      reminderRepeat: 'none',
+      tags: ['Mua sắm'],
+      color: 'bg-yellow-100',
+      isPinned: false,
+      isCompleted: false
+    },
+    {
+      id: 'n2',
+      title: 'Học bài',
+      content: 'Cô dặn về nhà học thuộc bài',
+      checklist: [
+        { id: 'c6', text: 'Bảng cửu chương 6', isCompleted: false },
+        { id: 'c7', text: 'Toán dạng tìm x', isCompleted: false },
+        { id: 'c8', text: 'Thuộc lòng ghi nhớ Đạo đức', isCompleted: false }
+      ],
+      createdAt: Date.now(),
+      reminderDate: getDayDate(0),
+      reminderRepeat: 'none',
+      tags: ['Học tập'],
+      color: 'bg-blue-100',
+      isPinned: false,
+      isCompleted: false
+    },
+    {
+      id: 'n3',
+      title: '',
+      content: 'Chiều đi chơi cầu lông với bạn Tuấn',
+      createdAt: Date.now(),
+      color: 'bg-white',
+      isPinned: false,
+      isCompleted: false
+    },
+    {
+      id: 'n4',
+      title: '',
+      content: 'Mai mua 2 cuốn tập viết mới.',
+      createdAt: Date.now(),
+      color: 'bg-white',
+      isPinned: false,
+      isCompleted: false
+    },
+    {
+      id: 'n5',
+      title: 'Tập thể dục',
+      content: 'Xuống sân tập thể dục với ba',
+      createdAt: Date.now(),
+      reminderDate: getDayDate(0),
+      reminderTime: '06:00',
+      reminderRepeat: 'daily',
+      color: 'bg-pink-100',
+      isPinned: false,
+      isCompleted: false
+    }
+  ];
+
+  const profile = {
+    fullName: 'Nguyễn Huy Hoàng',
+    nickname: 'Hoàng Kun',
+    gender: 'male',
+    dateOfBirth: '2019-09-18',
+    school: 'Trường Tiểu học Thủ Khoa Huân',
+    className: '3B',
+    schoolYear: '2026-2027',
+    homeroomTeacher: 'Thầy Tuấn',
+    favoriteSubjects: ['Tiếng Việt', 'Đạo đức', 'Tự nhiên và Xã hội', 'Âm nhạc'],
+    interests: ['Chơi Cầu lông', 'xem tivi'],
+    parentName: 'Nguyên Văn A',
+    parentPhone: '0989 999 888'
+  };
+
+  return { schedule, homework, studySessions, notes, profile };
 };

@@ -42,11 +42,54 @@ export interface BackpackItem {
   prepared: boolean;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  isCompleted: boolean;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  icon?: string;
+  isPinned: boolean;
+  isCompleted: boolean;
+  createdAt: number;
+  order?: number;
+  reminderDate?: string | null;
+  reminderTime?: string | null;
+  reminderRepeat?: 'none' | 'daily' | 'weekly';
+  reminderDays?: number[];
+  tags?: string[];
+  files?: { name: string; url: string; type: string }[];
+  checklist?: ChecklistItem[];
+}
+
+export interface UserProfile {
+  avatar?: string;
+  fullName?: string;
+  nickname?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
+  school?: string;
+  className?: string; // class is a reserved keyword
+  homeroomTeacher?: string;
+  schoolYear?: string;
+  favoriteSubjects?: string[];
+  interests?: string[];
+  parentName?: string;
+  parentPhone?: string;
+  bio?: string;
+}
+
 export interface UserStats {
   stars: number;
   daysOnTime: number;
   homeworkCompleted: number;
   totalStarsEarned: number;
+  weeklyStars?: number;
   badges: string[];
   unlockedItems: string[];
   stickers?: string[];
@@ -55,4 +98,5 @@ export interface UserStats {
   lastDailyRewardDate?: string;
   lastResetWeek?: string;
   highScores?: Record<string, number>;
+  profile?: UserProfile;
 }

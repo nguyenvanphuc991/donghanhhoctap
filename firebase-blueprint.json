@@ -14,7 +14,8 @@
         "stickers": { "type": "array", "items": { "type": "string" } },
         "activeWallpaper": { "type": "string" },
         "activeCharacter": { "type": "string" },
-        "lastDailyRewardDate": { "type": "string" }
+        "lastDailyRewardDate": { "type": "string" },
+        "profile": { "type": "object" }
       }
     },
     "ScheduleItem": {
@@ -63,6 +64,27 @@
         "subject": { "type": "string" },
         "prepared": { "type": "boolean" }
       }
+    },
+    "Note": {
+      "title": "Personal Note",
+      "description": "A personal note",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "color": { "type": "string" },
+        "icon": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "reminderDate": { "type": "string" },
+        "reminderTime": { "type": "string" },
+        "reminderRepeat": { "type": "string" },
+        "reminderDays": { "type": "array", "items": { "type": "integer" } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "files": { "type": "array", "items": { "type": "object" } },
+        "checklist": { "type": "array", "items": { "type": "object" } }
+      }
     }
   },
   "firestore": {
@@ -85,6 +107,10 @@
     "/users/{userId}/backpackItems/{itemId}": {
       "schema": "BackpackItem",
       "description": "Items to prepare in the backpack"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User's personal notes"
     }
   }
 }
